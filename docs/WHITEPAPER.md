@@ -227,7 +227,7 @@ CREATE INDEX idx_transactions_wallet ON transactions(wallet);
 
 | Component | Testnet | Mainnet (Planned) |
 |-----------|---------|-------------------|
-| Server | Oracle Cloud Free Tier VM | Dedicated VM |
+| Server | Oracle Cloud VM | Dedicated VM |
 | Database | SQLite | PostgreSQL 15 |
 | Cache | In-memory | Redis |
 | WSGI | Gunicorn (4 workers) | Gunicorn (8+ workers) |
