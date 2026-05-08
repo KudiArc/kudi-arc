@@ -283,7 +283,7 @@ kudi-arc/
 
 | Document | Description |
 |----------|-------------|
-| [docs/WHITEPAPER.md](./docs/WHITEPAPER.md) | Full technical whitepaper v2.0 |
+| [docs/WHITEPAPER.md](./docs/WHITEPAPER.md) | Full technical whitepaper v1.0 |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | System architecture, diagrams, data flows |
 | [docs/API.md](./docs/API.md) | Backend API reference with examples |
 | [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) | Production deployment guide |
@@ -316,7 +316,7 @@ git push origin feature/your-feature
 
 Found a vulnerability? **Do not open a public issue.**
 
-Contact us at **security@kudiarc.app** or DM [@KudiArc](https://twitter.com/KudiArc) on X.
+Contact us at **security@kudiarc.xyz** or DM [@KudiArc](https://twitter.com/KudiArc) on X.
 
 We respond within 48 hours. See [SECURITY.md](./SECURITY.md) for the full disclosure policy and bug bounty scope.
 
