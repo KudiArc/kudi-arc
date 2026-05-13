@@ -38,7 +38,7 @@ We solve three structural failures in African finance:
 
 | Metric | Value |
 |--------|-------|
-| Swap Volume:     |      $63,800+ USDC equivalent |
+| Swap Volume:     |      $63,800+ USDC |
 | Total Tnx.       | 27,000+ |
 | Active Wallets:  |  295+ |
 | KudiYield TVL:   |   6,718+ USYC |
@@ -270,7 +270,7 @@ kudi-arc/
 | Phase 2 | NGN remittance + 10-country support | ✅ Complete |
 | Phase 3 | USYC yield integration | ✅ Complete |
 | Phase 4 | Multi-currency (KES, GHS, XOF, FCFA) | ✅ Complete |
-| Phase 5 | Bitnob / Flutterwave live integration | 🔄 In Progress |
+| Phase 5 | Bitnob / Flutterwave / Paystack live integration | ✅️ Complete (sandbox) |
 | Phase 6 | Arc Mainnet + PostgreSQL + Multisig | ⏳ Q3 2026 |
 | Phase 7 | AMM model (x\*y=k) + open liquidity provision | 📋 Q4 2026 |
 | Phase 8 | Chainlink oracle integration | 📋 Q4 2026 |
