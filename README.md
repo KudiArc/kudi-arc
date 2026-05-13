@@ -38,13 +38,13 @@ We solve three structural failures in African finance:
 
 | Metric | Value |
 |--------|-------|
-|Swap Volume:  |      $63,800+ USDC equivalent|
-| Total Tnx | 27,000+ |
-|Active Wallets:   |  293+|
-KudiYield TVL:      6,718+ USYC
-|USDC Pool:          1,000+ USDC
-|EURC Pool:          28,700+ EURC
-|1 USYC Value:  |     $1.1163 (live via Teller)|
+| Swap Volume:     |      $63,800+ USDC equivalent |
+| Total Tnx.       | 27,000+ |
+| Active Wallets:  |  295+ |
+| KudiYield TVL:   |   6,718+ USYC |
+| USDC Pool:       |   2,000+ USDC |
+| EURC Pool:       |    28,700+ EURC |
+| 1 USYC Value:    |     $1.1163 (live via Teller) |
 
 ---
 
