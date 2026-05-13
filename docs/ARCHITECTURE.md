@@ -41,8 +41,8 @@ Kudi Arc is a three-layer hybrid system: an EVM smart contract layer for on-chai
 ┌──────────▼──────────────────────────────────────────────────────┐
 │                   FIAT SETTLEMENT LAYER                         │
 │                                                                 │
-│   Bitnob (NGN)    Flutterwave (KES/GHS/ZAR/TZS/UGX/RWF)       │
-│   Wave (XOF/XAF)                                               │
+│   Bitnob (NGN)    Flutterwave (KES/GHS/ZAR/TZS/UGX/RWF/XOF/XAF/NGN)       │
+│   Paystack (fallback)                                               │
 │                                                                 │
 │   Webhook callbacks · Reference tracking · Status polling      │
 └─────────────────────────────────────────────────────────────────┘
