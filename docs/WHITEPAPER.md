@@ -402,8 +402,9 @@ Kudi Arc launches as a centralized protocol with a clear, time-bound path toward
 | USYC yield integration (KudiYield) | ✅ Complete |
 | Transaction history per wallet | ✅ Complete |
 | SolidityScan security audit | ✅ Complete |
-| Bitnob API integration (NGN live) | ✅ Complete |
+| Bitnob API integration (NGN live) | in progress |
 | Flutterwave API integration | ✅️ Complete |
+| Paystack API integration | ✅ Complete|
 | Circle USYC allowlist approval | ✅️ Complete |
 | User beta testing program | ⏳ In Progress |
 
