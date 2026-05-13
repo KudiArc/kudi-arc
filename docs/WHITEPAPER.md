@@ -427,8 +427,8 @@ Kudi Arc launches as a centralized protocol with a clear, time-bound path toward
 | Chainlink oracle integration | Q4 2026 |
 | AMM model (x*y=k) replacing manual rate setting | Q4 2026 |
 | Open liquidity provision + LP token system | Q4 2026 |
-| (CCTP) Multi-chain deployment (Base, Stellar, Ethereum, Solana) | Q4 2026 |
-| Circle Wallets integration | Q4 2026 |
+| (CCTP) Multi-chain deployment (Base, Stellar, Ethereum, Solana) | Q3 2026 |
+| Paymaster | Q4 2026 |
 
 ### V4 — 2027
 
@@ -438,6 +438,7 @@ Kudi Arc launches as a centralized protocol with a clear, time-bound path toward
 | KUDI governance token consideration | Q2 2027 |
 | DAO governance framework | Q3 2027 |
 | Expand to 30+ African countries | 2027 |
+| Circle Programmable Wallets | Q1 2027 |
 
 ---
 
