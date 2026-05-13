@@ -34,17 +34,17 @@ We solve three structural failures in African finance:
 
 ---
 
-## Live Stats — Arc Testnet (March 2026)
+## Live Stats — Arc Testnet (May 2026)
 
 | Metric | Value |
 |--------|-------|
-| Total Swaps | 130+ |
-| USDC Swapped | 12925 USDC |
-| EURC Swapped | 1730 EURC |
-| USDC Pool | 21028 USDC |
-| EURC Pool | 1507 EURC |
-| Contract Fee | 0.30% |
-| Network | Arc Testnet (Chain 5042002) |
+|Swap Volume:  |      $63,800+ USDC equivalent|
+| Total Tnx | 27,000+ |
+|Active Wallets:   |  293+|
+KudiYield TVL:      6,718+ USYC
+|USDC Pool:          1,000+ USDC
+|EURC Pool:          28,700+ EURC
+|1 USYC Value:  |     $1.1163 (live via Teller)|
 
 ---
 
