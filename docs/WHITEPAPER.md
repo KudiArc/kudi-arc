@@ -393,7 +393,7 @@ Kudi Arc launches as a centralized protocol with a clear, time-bound path toward
 
 ## 12. Roadmap
 
-### Testnet — Q1 2026 (Current)
+### Testnet — Q1-Q2 2026 (Current)
 
 | Milestone | Status |
 |-----------|--------|
