@@ -92,7 +92,7 @@ Supports **10 African countries** at launch; planned expansion to 20+ on mainnet
 Integration with Circle's USYC — a tokenized money market fund backed by short-duration US Treasury Bills, issued directly on Arc Network:
 
 - **Current APY:** 4.86% (variable, tracks Fed Funds Rate)
-- **1 USYC ≈ $1.11 USDC** — accrual-based pricing, not rebase
+- **$1.1163 per USYC — fetched in real time via Hashnote**
 - Eligible to non-US institutions (African entities qualify under Circle's allowlist)
 - No lock-up period — withdrawals processed on demand
 - Earnings displayed in NGN equivalent to provide local context
@@ -256,8 +256,8 @@ This is the highest-risk component of the protocol. Fiat settlement depends on l
 | Partner | Countries | Payout Methods | Status |
 |---------|-----------|----------------|--------|
 | Bitnob | Nigeria (NGN) | Bank transfer, mobile money | ✅ Live (testnet) |
-| Flutterwave | Kenya, Ghana, South Africa, Tanzania, Uganda, Rwanda | Bank transfer, M-Pesa, MTN MoMo | ✅ Live (testnet) |
-| Wave | Senegal, Côte d'Ivoire, Cameroon | Wave wallet, Orange Money | ✅ Live (testnet) |
+| Flutterwave | Kenya, Ghana, South Africa, Tanzania, Nigeria, Uganda, Rwanda | Senegal, Côte d'Ivoire, Cameroon | Bank Transfer, M-Pesa, MTN MoMo, Orange Money | ✅ Live (testnet) |
+| Paystack | Nigeria (NGN) | Bank transfer (fallback) | ✅ Live (integrated) |
 
 ### 6.3 Failure Modes & Recovery
 
