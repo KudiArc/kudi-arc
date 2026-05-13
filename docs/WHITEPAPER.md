@@ -443,10 +443,11 @@ Kudi Arc launches as a centralized protocol with a clear, time-bound path toward
 
 ## 13. Team
 
-### Musa Ali(Musa Ais) — Founder & Lead Developer
+### Musa Ali (Musa Ais) — Founder & Lead Developer
 
-Full-stack developer based in Nigeria with expertise spanning smart contract development (Solidity/Foundry), backend systems (Python/FastAPI/Flask), web frontend (React/ethers.js), and mobile (Flutter).
-200-Level Computer Science student, Federal University Dutse, Faculty of Computing, Nigeria.
+Full-stack developer based in Nigeria with expertise spanning smart contract development (Solidity/Foundry), backend systems (Python/FastAPI/Flask), web frontend (React/ethers.js), and mobile (Flutter). 
+
+200Level Computer Science student, Federal University Dutse, Faculty of Computing, Nigeria.
 
 **Previous projects:**
 
@@ -454,7 +455,7 @@ Full-stack developer based in Nigeria with expertise spanning smart contract dev
 - **ArcPay DeFi Protocol** — PaymentHub and LendingPool smart contracts on Arc Testnet with USDC payments, escrow, subscriptions, and 75% LTV lending
 - **VTU Platform** — Virtual Top-Up platform for Nigerian mobile data/airtime resellers, built on FastAPI + React + Flutter with Oracle Cloud deployment 
 
-**Links:** [GitHub](https://github.com/KudiArc) · [X/Twitter](https://twitter.com/KudiArc) · [Discord](https://discord.gg/nEJfqrAsqc)
+**Links:** [GitHub](https://github.com/KudiArc) · [X/Twitter](https://twitter.com/Musa_Ais) · [Discord](https://discord.gg/nEJfqrAsqc)
 
 > **Advisory & Hiring:** Kudi Arc is actively seeking advisors with backgrounds in African fintech regulation, Bitnob/Flutterwave partnership experience, and Arc Network ecosystem development. Community contributors are welcomed via GitHub.
 
