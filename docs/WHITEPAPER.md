@@ -446,6 +446,7 @@ Kudi Arc launches as a centralized protocol with a clear, time-bound path toward
 ### Musa AIS — Founder & Lead Developer
 
 Full-stack developer based in Nigeria with expertise spanning smart contract development (Solidity/Foundry), backend systems (Python/FastAPI/Flask), web frontend (React/ethers.js), and mobile (Flutter).
+200-Level Computer Science student, Federal University Dutse, Faculty of Computing, Nigeria.
 
 **Previous projects:**
 
