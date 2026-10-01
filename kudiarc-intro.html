@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kudi Arc — Complete Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --forest:#0D3B2E;--emerald:#1A6B4A;--jade:#27AE74;--jade-light:#34C97F;
+  --gold:#F5A623;--amber:#E8851A;--cream:#FAF5E9;--muted:#7A8B7F;
+  --white:#FFFFFF;--error:#E05C5C;--card:rgba(250,245,233,0.05);
+  --border:rgba(250,245,233,0.1);--radius:16px;
+}
+html{scroll-behavior:smooth}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--forest);
+  color:var(--cream);
+  line-height:1.6;
+  overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background:
+    radial-gradient(circle at 10% 10%,rgba(39,174,116,0.1) 0%,transparent 40%),
+    radial-gradient(circle at 90% 90%,rgba(245,166,35,0.07) 0%,transparent 40%),
+    radial-gradient(circle at 50% 50%,rgba(26,107,74,0.05) 0%,transparent 60%);
+  pointer-events:none;z-index:0;
+}
+
+/* ── Layout ── */
+.page{position:relative;z-index:1;max-width:680px;margin:0 auto;padding:0 20px 80px}
+
+/* ── Hero ── */
+.hero{text-align:center;padding:60px 0 40px}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(39,174,116,0.12);border:1px solid rgba(39,174,116,0.25);
+  border-radius:20px;padding:6px 16px;font-size:12px;color:var(--jade);
+  margin-bottom:24px;letter-spacing:0.5px;
+}
+.hero-badge-dot{width:6px;height:6px;background:var(--jade);border-radius:50%;animation:pulse 2s infinite}
+.hero-logo{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:20px}
+.hero-mark{
+  width:64px;height:64px;
+  background:linear-gradient(135deg,var(--gold),var(--amber));
+  border-radius:18px;display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-weight:800;font-size:28px;color:var(--forest);
+  box-shadow:0 8px 32px rgba(245,166,35,0.35);
+}
+.hero-title{font-family:'Syne',sans-serif;font-size:clamp(36px,8vw,56px);font-weight:800;line-height:1.05;margin-bottom:16px}
+.hero-title .gold{color:var(--gold)}
+.hero-title .jade{color:var(--jade)}
+.hero-tagline{font-size:18px;color:rgba(250,245,233,0.7);max-width:480px;margin:0 auto 32px;line-height:1.6}
+.hero-links{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn-primary{
+  background:linear-gradient(135deg,var(--jade),var(--emerald));
+  border:none;border-radius:14px;color:var(--white);
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:700;
+  padding:13px 24px;cursor:pointer;text-decoration:none;
+  box-shadow:0 4px 20px rgba(39,174,116,0.3);transition:all 0.2s;
+  display:inline-flex;align-items:center;gap:8px;
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(39,174,116,0.4)}
+.btn-secondary{
+  background:rgba(250,245,233,0.07);border:1px solid rgba(250,245,233,0.15);
+  border-radius:14px;color:var(--cream);
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:600;
+  padding:13px 24px;cursor:pointer;text-decoration:none;
+  transition:all 0.2s;display:inline-flex;align-items:center;gap:8px;
+}
+.btn-secondary:hover{background:rgba(250,245,233,0.12)}
+
+/* ── Stats bar ── */
+.stats-bar{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+  background:var(--border);border-radius:14px;overflow:hidden;
+  margin:32px 0;border:1px solid var(--border);
+}
+.stat-item{background:var(--card);padding:16px 12px;text-align:center}
+.stat-num{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--jade)}
+.stat-lbl{font-size:11px;color:var(--muted);margin-top:3px}
+
+/* ── Section ── */
+.section{margin-bottom:48px}
+.section-tag{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:600;color:var(--gold);
+  text-transform:uppercase;letter-spacing:1.5px;
+  margin-bottom:10px;
+}
+.section-title{font-family:'Syne',sans-serif;font-size:clamp(22px,5vw,30px);font-weight:800;margin-bottom:8px;line-height:1.2}
+.section-sub{font-size:15px;color:rgba(250,245,233,0.65);margin-bottom:24px;line-height:1.6}
+
+/* ── Problem cards ── */
+.problem-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.problem-card{
+  background:rgba(224,92,92,0.06);border:1px solid rgba(224,92,92,0.15);
+  border-radius:var(--radius);padding:18px;
+}
+.problem-icon{font-size:24px;margin-bottom:10px}
+.problem-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--error);margin-bottom:6px}
+.problem-text{font-size:12px;color:rgba(250,245,233,0.6);line-height:1.5}
+.problem-stat{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--error);margin-top:8px}
+
+/* ── Solution callout ── */
+.solution-callout{
+  background:rgba(39,174,116,0.08);border:1px solid rgba(39,174,116,0.2);
+  border-radius:var(--radius);padding:20px;margin:16px 0;
+  display:flex;gap:14px;align-items:flex-start;
+}
+.solution-icon{
+  width:40px;height:40px;border-radius:10px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+  background:rgba(39,174,116,0.15);
+}
+
+/* ── Feature cards ── */
+.feature-grid{display:grid;grid-template-columns:1fr;gap:14px}
+.feature-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:20px;
+  display:flex;gap:16px;align-items:flex-start;
+  transition:border-color 0.2s;
+}
+.feature-card:hover{border-color:rgba(39,174,116,0.3)}
+.feature-num{
+  width:36px;height:36px;border-radius:10px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--jade),var(--emerald));
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--white);
+}
+.feature-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--cream);margin-bottom:5px}
+.feature-desc{font-size:13px;color:rgba(250,245,233,0.65);line-height:1.5}
+.feature-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tag{
+  background:rgba(39,174,116,0.1);border:1px solid rgba(39,174,116,0.2);
+  border-radius:8px;padding:3px 8px;font-size:11px;color:var(--jade);
+}
+.tag.gold{background:rgba(245,166,35,0.1);border-color:rgba(245,166,35,0.2);color:var(--gold)}
+
+/* ── How it works flow ── */
+.flow{display:flex;flex-direction:column;gap:0}
+.flow-step{display:flex;gap:16px;position:relative}
+.flow-step:not(:last-child)::after{
+  content:'';position:absolute;left:19px;top:44px;
+  width:2px;height:calc(100% - 20px);
+  background:linear-gradient(to bottom,var(--jade),transparent);
+}
+.flow-circle{
+  width:40px;height:40px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,var(--jade),var(--emerald));
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--white);
+  box-shadow:0 4px 16px rgba(39,174,116,0.3);z-index:1;
+}
+.flow-content{padding-bottom:28px;flex:1}
+.flow-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--cream);margin-bottom:4px}
+.flow-desc{font-size:13px;color:rgba(250,245,233,0.65);line-height:1.5}
+.flow-tip{
+  display:inline-flex;align-items:center;gap:5px;
+  background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.2);
+  border-radius:8px;padding:4px 10px;font-size:11px;color:var(--gold);
+  margin-top:8px;
+}
+
+/* ── Country grid ── */
+.country-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.country-item{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px;
+}
+.country-flag{font-size:22px;line-height:1}
+.country-name{font-size:13px;font-weight:600;color:var(--cream)}
+.country-rate{font-size:11px;color:var(--jade);margin-top:2px}
+
+/* ── Why choose ── */
+.why-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.why-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:16px;
+}
+.why-icon{font-size:22px;margin-bottom:10px}
+.why-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--cream);margin-bottom:5px}
+.why-text{font-size:12px;color:rgba(250,245,233,0.6);line-height:1.5}
+
+/* ── Step guide ── */
+.guide-steps{display:flex;flex-direction:column;gap:14px}
+.guide-step{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:18px;
+  display:flex;gap:14px;
+}
+.guide-step-num{
+  width:32px;height:32px;border-radius:8px;flex-shrink:0;
+  background:var(--gold);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:var(--forest);
+}
+.guide-step-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--cream);margin-bottom:4px}
+.guide-step-desc{font-size:13px;color:rgba(250,245,233,0.65);line-height:1.5}
+.guide-step-link{
+  display:inline-flex;align-items:center;gap:5px;
+  color:var(--jade);font-size:12px;font-weight:600;
+  text-decoration:none;margin-top:8px;
+}
+
+/* ── Comparison table ── */
+.compare-table{width:100%;border-collapse:collapse;font-size:13px}
+.compare-table th{
+  background:rgba(39,174,116,0.12);padding:12px 14px;
+  text-align:left;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;
+  color:var(--jade);border-bottom:1px solid var(--border);
+}
+.compare-table th:first-child{border-radius:10px 0 0 0}
+.compare-table th:last-child{border-radius:0 10px 0 0}
+.compare-table td{
+  padding:12px 14px;border-bottom:1px solid rgba(250,245,233,0.05);
+  color:rgba(250,245,233,0.8);vertical-align:middle;
+}
+.compare-table tr:hover td{background:rgba(250,245,233,0.03)}
+.check{color:var(--jade);font-size:16px}
+.cross{color:var(--error);font-size:16px}
+.highlight-row td{background:rgba(39,174,116,0.05)!important;font-weight:600}
+.highlight-row td:first-child{color:var(--jade)}
+
+/* ── Security section ── */
+.security-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.security-item{
+  display:flex;align-items:center;gap:10px;
+  background:var(--card);border:1px solid rgba(39,174,116,0.15);
+  border-radius:10px;padding:12px;
+}
+.security-check{
+  width:24px;height:24px;border-radius:6px;flex-shrink:0;
+  background:rgba(39,174,116,0.15);display:flex;align-items:center;justify-content:center;
+  color:var(--jade);font-size:13px;
+}
+.security-text{font-size:12px;color:rgba(250,245,233,0.75)}
+
+/* ── Roadmap ── */
+.roadmap{display:flex;flex-direction:column;gap:10px}
+.roadmap-item{
+  display:flex;gap:14px;align-items:center;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:14px 16px;
+}
+.roadmap-badge{
+  padding:4px 10px;border-radius:8px;font-size:11px;font-weight:600;
+  white-space:nowrap;flex-shrink:0;
+}
+.badge-done{background:rgba(39,174,116,0.15);color:var(--jade)}
+.badge-progress{background:rgba(245,166,35,0.15);color:var(--gold)}
+.badge-planned{background:rgba(250,245,233,0.07);color:var(--muted)}
+.roadmap-text{font-size:13px;color:rgba(250,245,233,0.8)}
+
+/* ── CTA section ── */
+.cta{
+  background:linear-gradient(135deg,rgba(26,107,74,0.4),rgba(13,59,46,0.6));
+  border:1px solid rgba(39,174,116,0.25);
+  border-radius:20px;padding:40px 24px;text-align:center;margin-top:48px;
+  position:relative;overflow:hidden;
+}
+.cta::before{
+  content:'🌍';position:absolute;right:-20px;top:-20px;
+  font-size:120px;opacity:0.05;line-height:1;
+}
+.cta-title{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;margin-bottom:10px}
+.cta-sub{font-size:14px;color:rgba(250,245,233,0.65);margin-bottom:24px;line-height:1.6}
+.cta-links{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+/* ── Divider ── */
+.divider{height:1px;background:var(--border);margin:40px 0}
+
+/* ── Animations ── */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.hero{animation:fadeUp 0.5s ease both}
+.stats-bar{animation:fadeUp 0.5s ease 0.1s both}
+
+/* ── TOC ── */
+.toc{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:20px;margin-bottom:40px;
+}
+.toc-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:6px}
+.toc-list a{
+  color:rgba(250,245,233,0.7);text-decoration:none;font-size:13px;
+  display:flex;align-items:center;gap:8px;padding:4px 0;
+  border-bottom:1px solid transparent;transition:all 0.15s;
+}
+.toc-list a:hover{color:var(--jade)}
+.toc-num{font-size:11px;color:var(--muted);width:18px}
+
+/* ── Quote ── */
+.quote{
+  border-left:3px solid var(--jade);padding:14px 18px;
+  background:rgba(39,174,116,0.05);border-radius:0 10px 10px 0;
+  margin:16px 0;font-style:italic;color:rgba(250,245,233,0.75);font-size:14px;line-height:1.6;
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-badge">
+      <div class="hero-badge-dot"></div>
+      Live on Arc Testnet · kudiarc.xyz
+    </div>
+    <div class="hero-logo">
+      <div class="hero-mark">K</div>
+    </div>
+    <h1 class="hero-title">
+      Meet <span class="gold">Kudi</span><span class="jade">Arc</span>
+    </h1>
+    <p class="hero-tagline">
+      The simplest way for Africans to swap stablecoins, send money home, and earn real yield — all without needing ETH.
+    </p>
+    <div class="hero-links">
+      <a href="https://kudiarc.xyz" target="_blank" class="btn-primary">
+        🚀 Try the dApp
+      </a>
+      <a href="https://github.com/KudiArc/kudi-arc" target="_blank" class="btn-secondary">
+        📁 GitHub
+      </a>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat-item">
+      <div class="stat-num">0.30%</div>
+      <div class="stat-lbl">Swap fee</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">10</div>
+      <div class="stat-lbl">Countries</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">4.86%</div>
+      <div class="stat-lbl">APY Yield</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">97/100</div>
+      <div class="stat-lbl">Security</div>
+    </div>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <div class="toc-title">📋 Table of Contents</div>
+    <ul class="toc-list">
+      <li><a href="#what"><span class="toc-num">01</span>What is Kudi Arc?</a></li>
+      <li><a href="#problem"><span class="toc-num">02</span>The Problem We're Solving</a></li>
+      <li><a href="#features"><span class="toc-num">03</span>Three Core Products</a></li>
+      <li><a href="#how"><span class="toc-num">04</span>How It Works</a></li>
+      <li><a href="#guide"><span class="toc-num">05</span>Step-by-Step Guide</a></li>
+      <li><a href="#countries"><span class="toc-num">06</span>Supported Countries</a></li>
+      <li><a href="#why"><span class="toc-num">07</span>Why Kudi Arc?</a></li>
+      <li><a href="#compare"><span class="toc-num">08</span>How We Compare</a></li>
+      <li><a href="#security"><span class="toc-num">09</span>Security & Trust</a></li>
+      <li><a href="#roadmap"><span class="toc-num">10</span>Roadmap</a></li>
+    </ul>
+  </div>
+
+  <!-- What is Kudi Arc -->
+  <div class="section" id="what">
+    <div class="section-tag">01 · Introduction</div>
+    <h2 class="section-title">What is Kudi Arc?</h2>
+    <p class="section-sub">A full financial toolkit for Africans — built on the blockchain, designed for simplicity.</p>
+
+    <div class="quote">
+      "Kudi" means <strong>money</strong> in Hausa and Yoruba — Nigeria's two most spoken languages. "Arc" is the blockchain we built on. Together: <strong>money on Arc</strong>.
+    </div>
+
+    <p style="font-size:14px;color:rgba(250,245,233,0.75);line-height:1.7;margin-bottom:16px">
+      Kudi Arc is a decentralised application (dApp) built on <strong style="color:var(--cream)">Arc Network</strong> — the first blockchain where gas is paid in USDC instead of ETH. This means African users only need USDC to use the entire platform. No ETH. No complicated setup. Just connect your wallet and go.
+    </p>
+
+    <p style="font-size:14px;color:rgba(250,245,233,0.75);line-height:1.7">
+      We combine three powerful financial tools in one place: <strong style="color:var(--jade)">FX Swap</strong>, <strong style="color:var(--gold)">Remittance</strong>, and <strong style="color:var(--jade)">Yield</strong>. Products that normally require three different apps, multiple KYC processes, and a lot of friction — Kudi Arc puts them all in one clean interface.
+    </p>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- The Problem -->
+  <div class="section" id="problem">
+    <div class="section-tag">02 · The Problem</div>
+    <h2 class="section-title">What Problem Are We Solving?</h2>
+    <p class="section-sub">Africa has three compounding financial problems that affect over 1.4 billion people.</p>
+
+    <div class="problem-grid">
+      <div class="problem-card">
+        <div class="problem-icon">💱</div>
+        <div class="problem-title">Forex Scarcity</div>
+        <div class="problem-text">Nigeria's CBN restricts USD access. The parallel market charges a massive premium over official rates.</div>
+        <div class="problem-stat">30%+ premium</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon">💸</div>
+        <div class="problem-title">High Remittance Fees</div>
+        <div class="problem-text">Sending money to Africa costs a fortune. The World Bank reports an average of 8.5% per transfer.</div>
+        <div class="problem-stat">8.5% avg fee</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon">📉</div>
+        <div class="problem-title">No Real Yield</div>
+        <div class="problem-text">Nigerian savings accounts offer 4-6% APY in NGN — a currency that lost 70% against USD in 2023.</div>
+        <div class="problem-stat">-70% in 2023</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon">⛽</div>
+        <div class="problem-title">ETH Gas Barrier</div>
+        <div class="problem-text">Every other DeFi app requires ETH for gas. Most African crypto users only hold USDC — not ETH.</div>
+        <div class="problem-stat">Blocked out</div>
+      </div>
+    </div>
+
+    <div class="solution-callout" style="margin-top:20px">
+      <div class="solution-icon">✅</div>
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--jade);margin-bottom:4px">Kudi Arc fixes all four</div>
+        <div style="font-size:13px;color:rgba(250,245,233,0.7);line-height:1.5">Live FX rates at 0.30% fee · Sub-1% remittance target · 4.86% APY in real USD · USDC is gas on Arc — no ETH needed</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Three Products -->
+  <div class="section" id="features">
+    <div class="section-tag">03 · Core Products</div>
+    <h2 class="section-title">Three Products in One App</h2>
+    <p class="section-sub">Each product solves a specific problem. Together they cover your entire crypto-to-cash journey.</p>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-num">1</div>
+        <div>
+          <div class="feature-name">⇄ FX Swap — Kudi Swap</div>
+          <div class="feature-desc">
+            Swap between USDC and EURC at live market rates. The rate is pulled from real FX data every 5 minutes and displayed before you confirm. Your transaction is protected by slippage tolerance — if the rate moves too much before your swap goes through, it automatically cancels.
+          </div>
+          <div class="feature-tags">
+            <span class="tag">0.30% fee</span>
+            <span class="tag">Live rates</span>
+            <span class="tag">Slippage protection</span>
+            <span class="tag gold">USDC ↔ EURC</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-num">2</div>
+        <div>
+          <div class="feature-name">📤 Send Money — Kudi Send</div>
+          <div class="feature-desc">
+            Send USDC or EURC from your wallet — your recipient gets local cash in their bank account or mobile wallet. You sign the transaction in your wallet (no passwords), and our system routes the payment to the right payout partner (Bitnob for Nigeria, Flutterwave for Kenya/Ghana, Wave for Francophone Africa).
+          </div>
+          <div class="feature-tags">
+            <span class="tag">10 countries</span>
+            <span class="tag">Bank transfer</span>
+            <span class="tag">Mobile money</span>
+            <span class="tag gold">NGN · KES · GHS · XOF</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-num">3</div>
+        <div>
+          <div class="feature-name">📈 Yield — Kudi Yield</div>
+          <div class="feature-desc">
+            Put your idle USDC to work. Deposit USDC and receive USYC — a tokenized money market fund backed by short-duration US Treasury Bills, issued by Circle on Arc. Your USYC grows in value every day automatically. No staking. No claiming. Just hold and earn. Withdraw any time.
+          </div>
+          <div class="feature-tags">
+            <span class="tag">4.86% APY</span>
+            <span class="tag">US T-Bills backed</span>
+            <span class="tag">No lock-up</span>
+            <span class="tag gold">Earn in USD terms</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- How It Works -->
+  <div class="section" id="how">
+    <div class="section-tag">04 · How It Works</div>
+    <h2 class="section-title">How Does Kudi Arc Work?</h2>
+    <p class="section-sub">The full journey from connecting your wallet to receiving cash — explained simply.</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-circle">1</div>
+        <div class="flow-content">
+          <div class="flow-title">You connect your crypto wallet</div>
+          <div class="flow-desc">Open kudiarc.xyz on MetaMask or Rabby browser. Click "Connect Wallet". Arc Testnet is added automatically — no manual setup needed. Your wallet address is your identity. No email. No password. No KYC.</div>
+          <div class="flow-tip">💡 Works on MetaMask, Rabby, and any WalletConnect-compatible wallet</div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-circle">2</div>
+        <div class="flow-content">
+          <div class="flow-title">You fund your wallet with USDC</div>
+          <div class="flow-desc">Get testnet USDC for free at faucet.circle.com. On mainnet, you'll send real USDC from any exchange (Binance, Coinbase, etc.) to your wallet. USDC also pays your gas fees on Arc — no ETH needed.</div>
+          <div class="flow-tip">🚰 Testnet is 100% free — experiment without risk</div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-circle">3</div>
+        <div class="flow-content">
+          <div class="flow-title">You choose what to do</div>
+          <div class="flow-desc">Pick from three options: Swap your stablecoins, Send money to a bank account, or Deposit for yield. Each action is clear, with live rates and a preview of exactly what you'll receive before you confirm.</div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-circle">4</div>
+        <div class="flow-content">
+          <div class="flow-title">You sign in your wallet — not us</div>
+          <div class="flow-desc">Every transaction requires your cryptographic signature in your wallet. This means nobody — not even Kudi Arc — can move your funds without your approval. Two signatures are required: one to approve the token, one to execute the transaction.</div>
+          <div class="flow-tip">🔐 Your keys, your money — always</div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-circle">5</div>
+        <div class="flow-content">
+          <div class="flow-title">Transaction confirms on Arc blockchain</div>
+          <div class="flow-desc">Arc confirms transactions in under 1 second with deterministic finality. Every transaction is permanently recorded on the blockchain and verifiable on testnet.arcscan.app. You get a reference number for every send.</div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-circle">6</div>
+        <div class="flow-content">
+          <div class="flow-title">Recipient gets local cash</div>
+          <div class="flow-desc">For Send transactions, our payout partners (Bitnob, Flutterwave, Wave) convert the stablecoin to local currency and credit the recipient's bank account or mobile wallet — typically within minutes on mainnet.</div>
+          <div class="flow-tip">🏦 Supports GTBank, OPay, Kuda, M-Pesa, MTN MoMo, Wave and more</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Step-by-Step Guide -->
+  <div class="section" id="guide">
+    <div class="section-tag">05 · Getting Started</div>
+    <h2 class="section-title">Step-by-Step Guide</h2>
+    <p class="section-sub">From zero to your first transaction in under 5 minutes.</p>
+
+    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--gold);margin-bottom:12px">🔧 SETUP (First Time Only)</div>
+    <div class="guide-steps">
+      <div class="guide-step">
+        <div class="guide-step-num">1</div>
+        <div>
+          <div class="guide-step-title">Install MetaMask or Rabby</div>
+          <div class="guide-step-desc">Download MetaMask (metamask.io) or Rabby (rabby.io) as a browser extension or mobile app. Create a new wallet and save your seed phrase somewhere safe — this is the ONLY way to recover your wallet.</div>
+          <a href="https://metamask.io" target="_blank" class="guide-step-link">↗ Get MetaMask</a>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="guide-step-num">2</div>
+        <div>
+          <div class="guide-step-title">Open Kudi Arc and connect</div>
+          <div class="guide-step-desc">Go to kudiarc.xyz. Click the green "Connect" button in the top bar. Your wallet will ask permission to connect — click "Connect". Arc Testnet network is added automatically.</div>
+          <a href="https://kudiarc.xyz" target="_blank" class="guide-step-link">↗ Open kudiarc.xyz</a>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="guide-step-num">3</div>
+        <div>
+          <div class="guide-step-title">Get free testnet USDC</div>
+          <div class="guide-step-desc">Visit faucet.circle.com, connect your wallet, and claim free USDC on Arc Testnet. This USDC has no real value — it's for testing. You can claim multiple times. You need USDC to pay gas fees too.</div>
+          <a href="https://faucet.circle.com" target="_blank" class="guide-step-link">↗ Circle Faucet</a>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--jade);margin:24px 0 12px">⇄ MAKE YOUR FIRST SWAP</div>
+    <div class="guide-steps">
+      <div class="guide-step">
+        <div class="guide-step-num">4</div>
+        <div>
+          <div class="guide-step-title">Go to Swap tab</div>
+          <div class="guide-step-desc">On the Swap page, you'll see the live rate (e.g. 1 USDC = 0.8697 EURC). Enter an amount in the "You Send" field. You'll instantly see how much EURC you'll receive, the fee, and the NGN equivalent.</div>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="guide-step-num">5</div>
+        <div>
+          <div class="guide-step-title">Click Swap and approve in wallet</div>
+          <div class="guide-step-desc">Click the Swap button. Your wallet will pop up twice: first to approve the USDC spend (Step 1/2), then to execute the swap (Step 2/2). Confirm both. The swap completes in seconds and you'll see your new EURC balance.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--gold);margin:24px 0 12px">📤 SEND MONEY TO A BANK ACCOUNT</div>
+    <div class="guide-steps">
+      <div class="guide-step">
+        <div class="guide-step-num">6</div>
+        <div>
+          <div class="guide-step-title">Go to Send tab</div>
+          <div class="guide-step-desc">Choose your send token (USDC or EURC), enter the amount, and select the recipient's country. The live exchange rate and NGN/KES/GHS equivalent are shown instantly.</div>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="guide-step-num">7</div>
+        <div>
+          <div class="guide-step-title">Enter recipient bank details</div>
+          <div class="guide-step-desc">Choose delivery method (Bank Account or Mobile Money). For Nigeria, select the bank from the dropdown (26 banks supported). Enter account number and account name. For other countries, enter mobile number.</div>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="guide-step-num">8</div>
+        <div>
+          <div class="guide-step-title">Review and sign</div>
+          <div class="guide-step-desc">A confirmation modal shows all details — amount sent, amount received, fee, recipient. Review carefully, then click "Sign & Send". Approve in your wallet. A reference number is generated for tracking.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--jade);margin:24px 0 12px">📈 EARN YIELD WITH USYC</div>
+    <div class="guide-steps">
+      <div class="guide-step">
+        <div class="guide-step-num">9</div>
+        <div>
+          <div class="guide-step-title">Get USYC allowlist approved</div>
+          <div class="guide-step-desc">USYC is a regulated product. Circle requires one-time wallet approval. DM @KudiArc on X with your wallet address and we'll help get you approved. Takes 24-48 hours.</div>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="guide-step-num">10</div>
+        <div>
+          <div class="guide-step-title">Deposit USDC → receive USYC</div>
+          <div class="guide-step-desc">On the Yield tab, enter how much USDC to deposit. You'll see the USYC you receive and your estimated yearly earnings. Click Deposit, approve in wallet. Your USYC position grows in value automatically — no claiming needed.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Countries -->
+  <div class="section" id="countries">
+    <div class="section-tag">06 · Coverage</div>
+    <h2 class="section-title">10 African Countries Supported</h2>
+    <p class="section-sub">Send to bank accounts or mobile wallets across Sub-Saharan Africa.</p>
+
+    <div class="country-grid">
+      <div class="country-item"><div class="country-flag">🇳🇬</div><div><div class="country-name">Nigeria</div><div class="country-rate">NGN · Bitnob · GTBank, OPay</div></div></div>
+      <div class="country-item"><div class="country-flag">🇰🇪</div><div><div class="country-name">Kenya</div><div class="country-rate">KES · Flutterwave · M-Pesa</div></div></div>
+      <div class="country-item"><div class="country-flag">🇬🇭</div><div><div class="country-name">Ghana</div><div class="country-rate">GHS · Flutterwave · MTN MoMo</div></div></div>
+      <div class="country-item"><div class="country-flag">🇿🇦</div><div><div class="country-name">South Africa</div><div class="country-rate">ZAR · Flutterwave · Bank</div></div></div>
+      <div class="country-item"><div class="country-flag">🇸🇳</div><div><div class="country-name">Senegal</div><div class="country-rate">XOF · Wave · Orange Money</div></div></div>
+      <div class="country-item"><div class="country-flag">🇨🇮</div><div><div class="country-name">Côte d'Ivoire</div><div class="country-rate">XOF · Wave · MTN MoMo</div></div></div>
+      <div class="country-item"><div class="country-flag">🇨🇲</div><div><div class="country-name">Cameroon</div><div class="country-rate">FCFA · Wave · Orange Money</div></div></div>
+      <div class="country-item"><div class="country-flag">🇹🇿</div><div><div class="country-name">Tanzania</div><div class="country-rate">TZS · Flutterwave · M-Pesa</div></div></div>
+      <div class="country-item"><div class="country-flag">🇺🇬</div><div><div class="country-name">Uganda</div><div class="country-rate">UGX · Flutterwave · Airtel</div></div></div>
+      <div class="country-item"><div class="country-flag">🇷🇼</div><div><div class="country-name">Rwanda</div><div class="country-rate">RWF · Flutterwave · MTN MoMo</div></div></div>
+    </div>
+
+    <div class="solution-callout" style="margin-top:16px">
+      <div class="solution-icon">🗺️</div>
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--jade);margin-bottom:3px">Expanding to 20+ countries on mainnet</div>
+        <div style="font-size:12px;color:rgba(250,245,233,0.65)">Ethiopia, Tanzania, Mozambique, Egypt and more coming in Phase 6. Want your country added? Join our Discord.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Why Choose -->
+  <div class="section" id="why">
+    <div class="section-tag">07 · Why Us</div>
+    <h2 class="section-title">Why Choose Kudi Arc?</h2>
+    <p class="section-sub">We're not just another DeFi app retrofitted for Africa. We built for Africa from day one.</p>
+
+    <div class="why-grid">
+      <div class="why-card">
+        <div class="why-icon">⛽</div>
+        <div class="why-title">No ETH Needed</div>
+        <div class="why-text">Arc Network uses USDC as gas. The #1 barrier for African DeFi users is completely removed.</div>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">🌍</div>
+        <div class="why-title">Africa-First Design</div>
+        <div class="why-text">Built by a Nigerian developer, for African users. NGN rates shown everywhere. Local banks supported.</div>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">💰</div>
+        <div class="why-title">Lowest Fees</div>
+        <div class="why-text">0.30% swap fee. Target below 1% for remittance. Bitnob charges 1-2%. Western Union charges 5-8%.</div>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">🔐</div>
+        <div class="why-title">Transparent & Verified</div>
+        <div class="why-text">Smart contract is open-source, verified on Arcscan, and audited. 97/100 threat score. 0 critical bugs.</div>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">📈</div>
+        <div class="why-title">Real Yield in USD</div>
+        <div class="why-text">4.86% APY backed by US Treasury Bills. Not in NGN that devalues — in USD-denominated USYC.</div>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">⚡</div>
+        <div class="why-title">Sub-Second Finality</div>
+        <div class="why-text">Arc confirms transactions in under 1 second. No waiting, no uncertainty, no re-org risk.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Comparison -->
+  <div class="section" id="compare">
+    <div class="section-tag">08 · Comparison</div>
+    <h2 class="section-title">How We Compare</h2>
+    <p class="section-sub">Kudi Arc vs the alternatives Africans use today.</p>
+
+    <div style="overflow-x:auto;border-radius:12px;border:1px solid var(--border)">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Kudi Arc</th>
+            <th>Western Union</th>
+            <th>Bitnob</th>
+            <th>Uniswap</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="highlight-row">
+            <td>Send fee</td>
+            <td>&lt;1% (target)</td>
+            <td>5–8%</td>
+            <td>1–2%</td>
+            <td>N/A</td>
+          </tr>
+          <tr>
+            <td>Swap fee</td>
+            <td>0.30%</td>
+            <td>N/A</td>
+            <td>N/A</td>
+            <td>0.30%</td>
+          </tr>
+          <tr>
+            <td>Needs ETH</td>
+            <td><span class="check">✓ No</span></td>
+            <td><span class="check">✓ No</span></td>
+            <td><span class="check">✓ No</span></td>
+            <td><span class="cross">✗ Yes</span></td>
+          </tr>
+          <tr class="highlight-row">
+            <td>Yield on savings</td>
+            <td><span class="check">✓ 4.86% APY</span></td>
+            <td><span class="cross">✗ None</span></td>
+            <td><span class="cross">✗ None</span></td>
+            <td><span class="cross">✗ No</span></td>
+          </tr>
+          <tr>
+            <td>NGN settlement</td>
+            <td><span class="check">✓ Yes</span></td>
+            <td><span class="check">✓ Yes</span></td>
+            <td><span class="check">✓ Yes</span></td>
+            <td><span class="cross">✗ No</span></td>
+          </tr>
+          <tr>
+            <td>Open source</td>
+            <td><span class="check">✓ MIT</span></td>
+            <td><span class="cross">✗ No</span></td>
+            <td><span class="cross">✗ No</span></td>
+            <td><span class="check">✓ Yes</span></td>
+          </tr>
+          <tr>
+            <td>Verified contract</td>
+            <td><span class="check">✓ Arcscan</span></td>
+            <td>N/A</td>
+            <td>N/A</td>
+            <td><span class="check">✓ Yes</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Security -->
+  <div class="section" id="security">
+    <div class="section-tag">09 · Security</div>
+    <h2 class="section-title">Security & Trust</h2>
+    <p class="section-sub">KudiSwap V2 was built with multiple layers of protection. Here's what's under the hood.</p>
+
+    <div class="security-grid">
+      <div class="security-item"><div class="security-check">✓</div><div class="security-text">Reentrancy guard on all fund functions</div></div>
+      <div class="security-item"><div class="security-check">✓</div><div class="security-text">5-minute timelock on rate updates</div></div>
+      <div class="security-item"><div class="security-check">✓</div><div class="security-text">24-hour timelock on withdrawals</div></div>
+      <div class="security-item"><div class="security-check">✓</div><div class="security-text">50% max withdrawal per transaction</div></div>
+      <div class="security-item"><div class="security-check">✓</div><div class="security-text">Minimum liquidity always maintained</div></div>
+      <div class="security-item"><div class="security-check">✓</div><div class="security-text">Rate bounds ±20% prevent manipulation</div></div>
+      <div class="security-item"><div class="security-check">✓</div><div class="security-text">SafeERC20 for all token transfers</div></div>
+      <div class="security-item"><div class="security-check">✓</div><div class="security-text">Two-step ownership transfer</div></div>
+      <div class="security-item"><div class="security-check">✓</div><div class="security-text">Fees separated from liquidity</div></div>
+      <div class="security-item"><div class="security-check">✓</div><div class="security-text">Zero critical vulnerabilities</div></div>
+    </div>
+
+    <div class="solution-callout" style="margin-top:16px">
+      <div class="solution-icon">🛡️</div>
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--jade);margin-bottom:3px">SolidityScan Audit — 97/100 Threat Score</div>
+        <div style="font-size:12px;color:rgba(250,245,233,0.65)">Verified on Arcscan · MIT open-source license · Contract: 0x8a10D0e61201000B5456EC725165892B08832C5f</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Roadmap -->
+  <div class="section" id="roadmap">
+    <div class="section-tag">10 · Roadmap</div>
+    <h2 class="section-title">Where We're Going</h2>
+    <p class="section-sub">From testnet to becoming the financial infrastructure of Africa.</p>
+
+    <div class="roadmap">
+      <div class="roadmap-item"><span class="roadmap-badge badge-done">✅ Done</span><div class="roadmap-text">USDC ↔ EURC swap on Arc Testnet — verified contract, audited</div></div>
+      <div class="roadmap-item"><span class="roadmap-badge badge-done">✅ Done</span><div class="roadmap-text">NGN remittance + 10 country support — bank & mobile money</div></div>
+      <div class="roadmap-item"><span class="roadmap-badge badge-done">✅ Done</span><div class="roadmap-text">USYC yield tab — 4.86% APY, Circle allowlist approved</div></div>
+      <div class="roadmap-item"><span class="roadmap-badge badge-done">✅ Done</span><div class="roadmap-text">Multi-currency rates — NGN, KES, GHS, ZAR, XOF, FCFA</div></div>
+      <div class="roadmap-item"><span class="roadmap-badge badge-done">✅ Done</span><div class="roadmap-text">kudiarc.xyz domain + HTTPS + professional UI</div></div>
+      <div class="roadmap-item"><span class="roadmap-badge badge-progress">🔄 Now</span><div class="roadmap-text">Bitnob + Flutterwave live API integration for real payouts</div></div>
+      <div class="roadmap-item"><span class="roadmap-badge badge-progress">🔄 Soon</span><div class="roadmap-text">Arc Mainnet deployment when mainnet launches in 2026</div></div>
+      <div class="roadmap-item"><span class="roadmap-badge badge-planned">📋 Planned</span><div class="roadmap-text">AMM model (x*y=k) — trustless pricing, open liquidity</div></div>
+      <div class="roadmap-item"><span class="roadmap-badge badge-planned">📋 Planned</span><div class="roadmap-text">Chainlink oracle for rate anchoring</div></div>
+      <div class="roadmap-item"><span class="roadmap-badge badge-planned">📋 Planned</span><div class="roadmap-text">Multi-chain: Base, Stellar, Polygon via Circle CCTP</div></div>
+      <div class="roadmap-item"><span class="roadmap-badge badge-planned">📋 Planned</span><div class="roadmap-text">Mobile app (React Native) for Android & iOS</div></div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta">
+    <div class="cta-title">Ready to Try Kudi Arc? 🚀</div>
+    <div class="cta-sub">
+      The testnet is live, free to use, and works exactly like the real product.<br>
+      Connect your wallet. Get free USDC. Start exploring.
+    </div>
+    <div class="cta-links">
+      <a href="https://kudiarc.xyz" target="_blank" class="btn-primary">🔗 Open kudiarc.xyz</a>
+      <a href="https://discord.gg/nEJfqrAsqc" target="_blank" class="btn-secondary">💬 Join Discord</a>
+      <a href="https://github.com/KudiArc/kudi-arc" target="_blank" class="btn-secondary">📁 GitHub</a>
+    </div>
+    <div style="margin-top:24px;font-size:12px;color:rgba(250,245,233,0.35)">
+      Built by Musa · Nigeria 🇳🇬 · Made on Arc Network · Powered by Circle USDC, EURC & USYC
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

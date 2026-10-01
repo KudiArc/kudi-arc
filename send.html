@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="description" content="Kudi Arc — Africa-first stablecoin FX swap and remittance. Swap USDC ↔ EURC, send to 10 African countries, earn 4.86% APY. Built on Arc Network.">
+<meta property="og:title" content="Kudi Arc — Stablecoin FX & Remittance for Africa">
+<meta property="og:description" content="Swap USDC ↔ EURC at 0.30% fee. Send to Nigeria, Kenya, Ghana and 7 more countries. Earn 4.86% APY via USYC. No ETH needed.">
+<meta property="og:url" content="https://kudiarc.xyz">
+<meta property="og:image" content="https://kudiarc.xyz/og-image.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@KudiArc">
+<meta name="twitter:title" content="Kudi Arc — Stablecoin FX & Remittance for Africa">
+<meta name="twitter:description" content="Swap USDC ↔ EURC, send cash to 10 African countries, earn 4.86% APY.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23F5A623'/%3E%3Cpath d='M9 6v20M9 16l13-10M9 16l13 10' stroke='%230D3B2E' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Kudi Arc — Send</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+<script>
+window.addEventListener('load', async () => {
+  if (!window.ethereum) return;
+  try {
+    const accounts = await window.ethereum.request({method:'eth_accounts'});
+    if (accounts.length > 0) {
+      state.wallet   = accounts[0];
+      state.provider = new ethers.BrowserProvider(window.ethereum);
+      state.signer   = await state.provider.getSigner();
+      localStorage.setItem('kudiarc_wallet', accounts[0]);
+      updateWalletUI();
+      if (typeof loadBalances === 'function') await loadBalances();
+      if (typeof updateSummary === 'function') updateSummary();
+      if (typeof loadYieldBalance === 'function') await loadYieldBalance();
+    }
+  } catch(e) { console.warn('Auto-connect failed:', e); }
+
+  // Listen for account changes across all pages
+  window.ethereum.on('accountsChanged', async (accounts) => {
+    if (accounts.length === 0) {
+      state.wallet = null;
+      state.signer = null;
+      localStorage.removeItem('kudiarc_wallet');
+    } else {
+      state.wallet   = accounts[0];
+      state.provider = new ethers.BrowserProvider(window.ethereum);
+      state.signer   = await state.provider.getSigner();
+      localStorage.setItem('kudiarc_wallet', accounts[0]);
+      if (typeof loadBalances === 'function') await loadBalances();
+      if (typeof updateSummary === 'function') updateSummary();
+    }
+    updateWalletUI();
+  });
+
+  // Listen for chain changes
+  window.ethereum.on('chainChanged', () => window.location.reload());
+});
+
+</script>
+<script>
+function openDrawer() {
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawerOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+</script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--forest:#0D3B2E;--emerald:#1A6B4A;--jade:#27AE74;--gold:#F5A623;--amber:#E8851A;--cream:#FAF5E9;--charcoal:#1C1C1C;--muted:#7A8B7F;--white:#FFFFFF;--error:#E05C5C;--radius:16px}
+  body{font-family:'DM Sans',sans-serif;background:var(--forest);color:var(--cream);min-height:100vh;overflow-x:hidden;overflow-y:visible}
+  body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(circle at 20% 20%,rgba(39,174,116,0.08) 0%,transparent 50%),radial-gradient(circle at 80% 80%,rgba(245,166,35,0.06) 0%,transparent 50%);pointer-events:none;z-index:0}
+  .container{position:relative;z-index:1;max-width:420px;margin:0 auto;padding:0 16px 100px}
+  .header{display:flex;justify-content:space-between;align-items:center;padding:20px 0 16px}
+  .logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+  .logo-mark{width:38px;height:38px;background:linear-gradient(135deg,var(--gold),var(--amber));border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:var(--forest)}
+  .logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--cream)}
+  .logo-text span{color:var(--gold)}
+  .wallet-chip{display:flex;align-items:center;gap:6px;background:rgba(39,174,116,0.12);border:1px solid rgba(39,174,116,0.25);border-radius:20px;padding:5px 10px;font-size:12px;color:var(--jade)}
+  .wallet-dot{width:8px;height:8px;background:var(--jade);border-radius:50%}
+  .page-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--cream);margin-bottom:4px}
+  .page-sub{font-size:13px;color:var(--muted);margin-bottom:18px}
+  .card{background:rgba(250,245,233,0.05);border:1px solid rgba(250,245,233,0.1);border-radius:var(--radius);padding:18px;margin-bottom:12px}
+  .card-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--cream);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .dot{width:6px;height:6px;background:var(--gold);border-radius:50%}
+  .step-num{background:rgba(245,166,35,0.15);border:1px solid rgba(245,166,35,0.25);color:var(--gold);font-size:11px;font-weight:700;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+  /* Amount */
+  .amount-wrap{background:rgba(13,59,46,0.6);border:1px solid rgba(250,245,233,0.08);border-radius:12px;padding:14px 16px;margin-bottom:4px}
+  .amount-wrap:focus-within{border-color:rgba(39,174,116,0.4)}
+  .amount-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .amount-label{font-size:11px;color:var(--jade);text-transform:uppercase;letter-spacing:0.8px}
+  .balance-label{font-size:11px;color:var(--muted)}
+  .amount-row{display:flex;align-items:center;gap:10px}
+  .amount-input{flex:1;background:none;border:none;outline:none;color:var(--white);font-family:'Syne',sans-serif;font-size:26px;font-weight:600}
+  .amount-input::placeholder{color:rgba(255,255,255,0.2)}
+  .amount-input::-webkit-inner-spin-button{-webkit-appearance:none}
+  .token-select{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:7px 10px;color:var(--cream);font-size:13px;font-weight:600;cursor:pointer}
+  .preview-text{font-size:12px;color:var(--gold);margin-top:6px}
+
+  /* Country Grid */
+  .country-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .country-opt{background:rgba(13,59,46,0.5);border:1px solid rgba(250,245,233,0.08);border-radius:10px;padding:10px 12px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:8px}
+  .country-opt:hover{border-color:rgba(39,174,116,0.3);background:rgba(13,59,46,0.7)}
+  .country-opt.selected{background:rgba(39,174,116,0.15);border-color:var(--jade)}
+  .country-flag{font-size:20px;line-height:1}
+  .country-info{flex:1;min-width:0}
+  .country-name{font-size:12px;font-weight:600;color:var(--cream);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .country-rate{font-size:10px;color:var(--muted);margin-top:2px}
+
+  /* Rate Summary */
+  .rate-box{background:rgba(39,174,116,0.08);border:1px solid rgba(39,174,116,0.15);border-radius:12px;padding:12px 14px;margin-bottom:12px;display:none}
+  .rate-box.show{display:block}
+  .rate-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+  .rate-row:last-child{margin-bottom:0;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);font-size:13px;font-weight:600}
+  .rate-lbl{color:var(--muted)}
+  .rate-val{color:var(--cream)}
+  .rate-val.green{color:var(--jade)}
+
+  /* Method */
+  .method-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+  .method-btn{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px;text-align:center;cursor:pointer;transition:all 0.2s}
+  .method-btn.active{background:rgba(39,174,116,0.15);border-color:var(--jade)}
+  .method-icon{font-size:22px;margin-bottom:4px}
+  .method-label{font-size:12px;font-weight:600;color:var(--cream)}
+  .method-sub{font-size:10px;color:var(--muted);margin-top:2px}
+
+  /* Fields */
+  .field{margin-bottom:10px}
+  .field-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px}
+  .field-input{width:100%;background:rgba(13,59,46,0.6);border:1px solid rgba(250,245,233,0.08);border-radius:10px;padding:12px 14px;color:var(--cream);font-size:14px;outline:none;transition:border-color 0.2s}
+  .field-input:focus{border-color:rgba(39,174,116,0.4)}
+  .field-input::placeholder{color:rgba(255,255,255,0.2)}
+  select.field-input option{background:#0D3B2E;color:var(--cream)}
+
+  /* Confirm Modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:80;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity 0.3s}
+  .modal-overlay.show{opacity:1;pointer-events:all}
+  .modal{background:#0D3B2E;border:1px solid rgba(39,174,116,0.3);border-radius:20px;padding:24px 20px;width:100%;max-width:420px;transform:translateY(16px) scale(0.97);transition:transform 0.3s cubic-bezier(0.34,1.1,0.64,1);max-height:90vh;overflow-y:auto}
+  .modal-overlay.show .modal{transform:translateY(0) scale(1)}
+  .modal-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--cream);margin-bottom:4px}
+  .modal-sub{font-size:12px;color:var(--muted);margin-bottom:20px}
+  .modal-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06)}
+  .modal-row:last-of-type{border:none}
+  .modal-label{font-size:12px;color:var(--muted)}
+  .modal-value{font-size:13px;font-weight:600;color:var(--cream);text-align:right;max-width:60%}
+  .modal-value.big{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--gold)}
+  .modal-warn{background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:10px;padding:10px 12px;font-size:11px;color:var(--gold);margin:14px 0;line-height:1.5}
+  .modal-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+  .btn-cancel{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--muted);font-family:'Syne',sans-serif;font-size:14px;font-weight:600;padding:14px;border-radius:12px;cursor:pointer}
+  .btn-confirm{background:linear-gradient(135deg,var(--gold),var(--amber));border:none;color:var(--forest);font-family:'Syne',sans-serif;font-size:14px;font-weight:800;padding:14px;border-radius:12px;cursor:pointer}
+
+  /* Send Button */
+  .send-btn{width:100%;background:linear-gradient(135deg,var(--jade),var(--emerald));border:none;border-radius:14px;color:var(--white);font-family:'Syne',sans-serif;font-size:15px;font-weight:700;padding:16px;cursor:pointer;margin-top:4px;transition:all 0.2s;box-shadow:0 4px 20px rgba(39,174,116,0.25)}
+  .send-btn:hover{transform:translateY(-1px)}
+  .send-btn:disabled{background:rgba(255,255,255,0.08);color:var(--muted);cursor:not-allowed;box-shadow:none;transform:none}
+
+  /* Status Screens */
+  .status-screen{display:none;text-align:center;padding:40px 20px}
+  .status-screen.show{display:block}
+  .status-icon{font-size:56px;margin-bottom:12px}
+  .status-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:8px}
+  .status-msg{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px}
+  .status-ref{background:rgba(39,174,116,0.08);border:1px solid rgba(39,174,116,0.15);border-radius:10px;padding:10px;font-size:11px;color:var(--jade);word-break:break-all;margin-bottom:16px}
+  .status-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .btn-outline{background:none;border:1px solid rgba(39,174,116,0.3);color:var(--jade);font-family:'Syne',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:12px;cursor:pointer}
+
+  /* How It Works */
+  .how-card{background:rgba(250,245,233,0.03);border:1px solid rgba(250,245,233,0.07);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+  .how-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--cream);margin-bottom:12px}
+  .how-step{display:flex;gap:12px;margin-bottom:10px}
+  .how-num{width:24px;height:24px;background:rgba(39,174,116,0.15);border:1px solid rgba(39,174,116,0.25);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--jade);flex-shrink:0;margin-top:1px}
+  .how-text{font-size:12px;color:rgba(250,245,233,0.7);line-height:1.5}
+  .how-text strong{color:var(--cream)}
+
+  /* Bottom Nav */
+  
+  
+  
+  
+
+  /* Toast + Spinner */
+  .toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-120px);background:var(--charcoal);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px 20px;font-size:13px;max-width:340px;width:calc(100% - 32px);text-align:center;transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);z-index:100}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+  .toast.success{border-color:var(--jade);color:var(--jade)}
+  .toast.error{border-color:var(--error);color:var(--error)}
+  .toast.info{border-color:var(--gold);color:var(--gold)}
+  .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.2);border-top-color:white;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:8px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .card{animation:fadeUp 0.3s ease both}
+
+  /* ── Global Nav ── */
+  .site-nav{position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(13,59,46,0.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(250,245,233,0.08);height:58px;display:flex;align-items:center}
+  .nav-inner{max-width:420px;margin:0 auto;width:100%;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .nav-logo{display:flex;align-items:center;gap:8px;text-decoration:none;flex-shrink:0}
+  .nav-logo-mark{width:32px;height:32px;background:linear-gradient(135deg,#F5A623,#E8851A);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:#0D3B2E}
+  .nav-logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:17px;color:#FAF5E9}
+  .nav-logo-text span{color:#F5A623}
+  .nav-links{display:flex;align-items:center;gap:4px}
+  .nav-link{color:rgba(250,245,233,0.6);font-size:12px;font-weight:500;text-decoration:none;padding:6px 8px;border-radius:8px;transition:all 0.2s;white-space:nowrap}
+  .nav-link:hover,.nav-link.active{color:#FAF5E9;background:rgba(250,245,233,0.07)}
+  .nav-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .nav-connect{background:rgba(39,174,116,0.15);border:1px solid rgba(39,174,116,0.3);color:#27AE74;font-size:12px;font-weight:500;padding:6px 12px;border-radius:16px;cursor:pointer;white-space:nowrap;transition:all 0.2s}
+  .nav-connect:hover{background:rgba(39,174,116,0.25)}
+  .nav-menu-btn{width:32px;height:32px;background:rgba(250,245,233,0.07);border:1px solid rgba(250,245,233,0.1);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;flex-shrink:0}
+  .nav-menu-btn span{display:block;width:14px;height:1.5px;background:rgba(250,245,233,0.7);border-radius:2px;transition:all 0.2s}
+
+  /* ── Side Drawer ── */
+  .drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:300;opacity:0;pointer-events:none;transition:opacity 0.25s}
+  .drawer-overlay.open{opacity:1;pointer-events:all}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:280px;background:#0D3B2E;border-left:1px solid rgba(250,245,233,0.1);z-index:301;transform:translateX(100%);transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);display:flex;flex-direction:column;padding:0}
+  .drawer.open{transform:translateX(0)}
+  .drawer-header{display:flex;align-items:center;justify-content:space-between;padding:16px;border-bottom:1px solid rgba(250,245,233,0.08)}
+  .drawer-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:#FAF5E9}
+  .drawer-close{width:30px;height:30px;background:rgba(250,245,233,0.07);border:none;border-radius:8px;color:rgba(250,245,233,0.7);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .drawer-section{padding:12px 16px 4px;font-size:10px;font-weight:600;color:rgba(250,245,233,0.3);text-transform:uppercase;letter-spacing:1px}
+  .drawer-item{display:flex;align-items:center;gap:12px;padding:11px 16px;color:rgba(250,245,233,0.8);text-decoration:none;font-size:14px;font-weight:500;transition:all 0.15s;border-radius:0}
+  .drawer-item:hover{background:rgba(250,245,233,0.05);color:#FAF5E9}
+  .drawer-item-icon{font-size:16px;width:20px;text-align:center}
+  .drawer-divider{height:1px;background:rgba(250,245,233,0.07);margin:8px 16px}
+  .drawer-footer{margin-top:auto;padding:16px;border-top:1px solid rgba(250,245,233,0.08)}
+  .drawer-footer-text{font-size:11px;color:rgba(250,245,233,0.3);text-align:center;line-height:1.6}
+  .drawer-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(39,174,116,0.12);border:1px solid rgba(39,174,116,0.2);border-radius:10px;padding:2px 8px;font-size:10px;color:#27AE74;margin-top:6px}
+  .drawer-badge-dot{width:5px;height:5px;background:#27AE74;border-radius:50%;animation:pulse 2s infinite}
+
+  /* ── Footer ── */
+  .site-footer{background:rgba(0,0,0,0.2);border-top:1px solid rgba(250,245,233,0.07);padding:20px 16px;margin-top:20px}
+  .footer-inner{max-width:420px;margin:0 auto}
+  .footer-row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+  .footer-brand{flex:1}
+  .footer-logo{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .footer-logo-mark{width:28px;height:28px;background:linear-gradient(135deg,#F5A623,#E8851A);border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:12px;color:#0D3B2E}
+  .footer-logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:15px;color:#FAF5E9}
+  .footer-logo-text span{color:#F5A623}
+  .footer-tagline{font-size:11px;color:rgba(250,245,233,0.4);line-height:1.5;max-width:180px}
+  .footer-links{display:flex;flex-direction:column;gap:8px}
+  .footer-link{color:rgba(250,245,233,0.5);font-size:12px;text-decoration:none;transition:color 0.15s}
+  .footer-link:hover{color:#27AE74}
+  .footer-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid rgba(250,245,233,0.06);flex-wrap:wrap;gap:8px}
+  .footer-contract{font-size:10px;color:rgba(250,245,233,0.25);word-break:break-all}
+  .footer-made{font-size:11px;color:rgba(250,245,233,0.3)}
+  .arc-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(250,245,233,0.04);border:1px solid rgba(250,245,233,0.08);border-radius:10px;padding:3px 10px;font-size:10px;color:rgba(250,245,233,0.4);margin-top:8px}
+
+  /* Push content below fixed nav */
+
+
+  .page-footer{text-align:center;padding:20px 16px 8px;max-width:420px;margin:0 auto}
+  .page-footer-text{font-size:11px;color:rgba(250,245,233,0.3);margin-bottom:0;line-height:1.8}
+  .page-footer strong{color:rgba(250,245,233,0.5)}
+  body{padding-top:58px}
+  
+  
+  
+  
+  
+  
+  
+  .nav-item.active 
+  
+  
+  
+  
+  
+  .nav-item.active 
+  .bottom-nav{position:fixed!important;bottom:0!important;left:0!important;right:0!important;background:rgba(7,32,23,0.97);backdrop-filter:blur(20px);border-top:1px solid rgba(250,245,233,0.08);display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:space-around!important;z-index:9999;box-shadow:0 -2px 16px rgba(0,0,0,0.4);height:60px;padding:0}
+  .nav-item{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:3px;text-decoration:none;color:rgba(250,245,233,0.4);font-size:10px;font-weight:600;flex:1;height:60px;overflow:hidden;transition:color 0.2s;-webkit-tap-highlight-color:transparent}
+  .nav-item.active{color:#27AE74}
+  .nav-icon{display:flex;align-items:center;justify-content:center;width:20px;height:20px}
+
+  .nav-connect-btn{display:flex;align-items:center;gap:6px;background:linear-gradient(135deg,var(--jade),var(--emerald));border:none;border-radius:20px;color:var(--white);font-size:12px;font-weight:600;padding:7px 14px;cursor:pointer;transition:all 0.2s;white-space:nowrap;box-shadow:0 2px 10px rgba(39,174,116,0.3)}
+  .nav-wallet-chip{display:flex;align-items:center;gap:6px;background:rgba(39,174,116,0.12);border:1px solid rgba(39,174,116,0.25);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--jade)}
+  .nav-wallet-dot{width:7px;height:7px;background:var(--jade);border-radius:50%;animation:pulse 2s infinite}
+
+.hist-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:400;opacity:0;pointer-events:none;transition:opacity 0.25s}
+.hist-overlay.open{opacity:1;pointer-events:all}
+.hist-panel{position:fixed;bottom:0;left:0;right:0;max-height:80vh;background:#0D3B2E;border-top:2px solid rgba(39,174,116,0.35);border-radius:22px 22px 0 0;z-index:401;transform:translateY(100%);transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);display:flex;flex-direction:column;max-width:480px;margin:0 auto}
+.hist-panel.open{transform:translateY(0)}
+.hist-handle{width:36px;height:4px;background:rgba(250,245,233,0.15);border-radius:2px;margin:12px auto 0;flex-shrink:0}
+.hist-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;flex-shrink:0}
+.hist-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:#FAF5E9}
+.hist-close{width:28px;height:28px;background:rgba(250,245,233,0.06);border:none;border-radius:8px;color:rgba(250,245,233,0.6);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.hist-body{overflow-y:auto;padding:0 16px 32px;flex:1}
+.hist-empty{text-align:center;padding:40px 16px;color:#7A8B7F;font-size:13px}
+.htx{background:rgba(250,245,233,0.04);border:1px solid rgba(250,245,233,0.08);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.htx-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px}
+.htx-ico.swap{background:rgba(39,174,116,0.12);border:1px solid rgba(39,174,116,0.2)}
+.htx-ico.send{background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.18)}
+.htx-ico.yield{background:rgba(74,158,255,0.1);border:1px solid rgba(74,158,255,0.18)}
+.htx-body{flex:1;min-width:0}
+.htx-title{font-size:13px;font-weight:600;color:#FAF5E9;margin-bottom:2px}
+.htx-sub{font-size:11px;color:#7A8B7F}
+.htx-right{text-align:right;flex-shrink:0}
+.htx-amt{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:#27AE74}
+.htx-amt.send{color:#F5A623}
+.htx-time{font-size:10px;color:#4a6355;margin-top:2px}
+
+/* ── Feature cards ── */
+.feature-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.feature-card{background:var(--surface2, rgba(14,42,29,1));border:1px solid var(--border, rgba(39,174,116,0.12));border-radius:14px;padding:12px 10px;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:6px;transition:all 0.18s;-webkit-tap-highlight-color:transparent}
+.feature-card:hover{border-color:rgba(39,174,116,0.3);transform:translateY(-1px)}
+.feature-card.active{border-color:#27AE74;background:rgba(39,174,116,0.08)}
+.feature-card-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(18,46,31,0.8)}
+.feature-card.active .feature-card-icon{background:rgba(39,174,116,0.15)}
+.feature-card-name{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:#FAF5E9}
+.feature-card.active .feature-card-name{color:#27AE74}
+.feature-card-desc{font-size:9px;color:#6b8a78;text-align:center;line-height:1.4}
+
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-logo" href="/">
+      <div class="nav-logo-mark">
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M5 3.5V16.5" stroke="#0D3B2E" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M5 10L13.5 3.5" stroke="#0D3B2E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M5 10L14 16.5" stroke="#0D3B2E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="16" cy="10" r="1.5" fill="#0D3B2E" opacity="0.5"/>
+  </svg>
+</div>
+      <div class="nav-logo-text">Kudi<span>Arc</span></div>
+    </a>
+    <div id="walletArea">
+      <button class="nav-connect-btn" onclick="connectWallet()" style="display:flex;align-items:center;gap:6px;background:linear-gradient(135deg,#27AE74,#1A6B4A);border:none;border-radius:20px;color:#fff;font-size:12px;font-weight:600;padding:7px 14px;cursor:pointer;white-space:nowrap;">Connect</button>
+    </div>
+    <button class="nav-menu-btn" onclick="openDrawer()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <span class="drawer-title">Menu</span>
+    <button class="drawer-close" onclick="closeDrawer()">&#x2715;</button>
+  </div>
+  <div class="drawer-section">Navigate</div>
+  <a class="drawer-item" href="/"><span class="drawer-item-icon">&#x21C4;</span> Swap</a>
+  <a class="drawer-item" href="/send"><span class="drawer-item-icon">&#x2191;</span> Send</a>
+  <a class="drawer-item" href="/yield"><span class="drawer-item-icon">&#x1F4C8;</span> Yield</a>
+  
+  <div class="drawer-divider"></div>
+  <div class="drawer-section">Community</div>
+  <a class="drawer-item" href="https://x.com/KudiArc" target="_blank"><span class="drawer-item-icon">&#x1D54F;</span> Twitter / X</a>
+  <a class="drawer-item" href="https://discord.gg/nEJfqrAsqc" target="_blank"><span class="drawer-item-icon">&#x1F4AC;</span> Discord</a>
+  <a class="drawer-item" href="https://github.com/KudiArc/kudi-arc" target="_blank"><span class="drawer-item-icon">&#x2665;</span> GitHub</a>
+  <div class="drawer-footer">
+    <div class="drawer-footer-text">KudiArc &middot; Stablecoin FX<br>
+      <span class="drawer-badge"><span class="drawer-badge-dot"></span>Live on Arc Testnet</span>
+    </div>
+  </div>
+</div>
+<div class="container">
+  
+
+  <!-- Feature cards -->
+  <div class="feature-cards">
+    <a href="/" class="feature-card"><div class="feature-card-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--jade,#27AE74)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg></div><div class="feature-card-name">FX Swap</div><div class="feature-card-desc">USDC &#x2194; EURC<br>0.30% fee</div></a>
+    <a href="/send" class="feature-card active"><div class="feature-card-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F5A623" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5m0 0l-7 7m7-7l7 7"/><rect x="3" y="19" width="18" height="2" rx="1"/></svg></div><div class="feature-card-name">Send</div><div class="feature-card-desc">10 African<br>countries</div></a>
+    <a href="/yield" class="feature-card"><div class="feature-card-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4a9eff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></div><div class="feature-card-name">Yield</div><div class="feature-card-desc">4.86% APY<br>via USYC</div></a>
+  </div>
+
+  <!-- Main Form -->
+  <div id="mainForm">
+    <div class="page-title">Send Money</div>
+    <div class="page-sub">Send USDC or EURC — recipient gets local cash in minutes</div>
+
+    <!-- Step 1: Amount + Token -->
+    <div class="card">
+      <div class="card-title"><div class="step-num">1</div>You Send</div>
+      <div class="amount-wrap">
+        <div class="amount-top">
+          <div class="amount-label">Amount</div>
+          <div class="balance-label" id="sendBalance">Balance: —</div>
+        </div>
+        <div class="amount-row">
+          <input type="number" class="amount-input" id="sendAmount" placeholder="0.00" oninput="updateSummary()">
+          <select class="token-select" id="sendToken" onchange="updateSummary()">
+            <option value="USDC">USDC</option>
+            <option value="EURC">EURC</option>
+          </select>
+        </div>
+        <div class="preview-text" id="localPreview">≈ 0 local currency</div>
+      </div>
+    </div>
+
+    <!-- Step 2: Country -->
+    <div class="card">
+      <div class="card-title"><div class="step-num">2</div>Recipient Country</div>
+      <div class="country-grid" id="countryGrid">
+        <div style="color:var(--muted);font-size:12px;grid-column:span 2;padding:8px 0">Loading countries...</div>
+      </div>
+    </div>
+
+    <!-- Live Rate Box -->
+    <div class="rate-box" id="rateBox">
+      <div class="rate-row">
+        <span class="rate-lbl">Exchange rate</span>
+        <span class="rate-val green" id="rateInfo">—</span>
+      </div>
+      <div class="rate-row">
+        <span class="rate-lbl">You send</span>
+        <span class="rate-val" id="rateSend">—</span>
+      </div>
+      <div class="rate-row">
+        <span class="rate-lbl">Fee (0.30%)</span>
+        <span class="rate-val" id="rateFee">—</span>
+      </div>
+      <div class="rate-row">
+        <span class="rate-lbl">Recipient gets</span>
+        <span class="rate-val green" id="rateReceive">—</span>
+      </div>
+    </div>
+
+    <!-- Step 3: Delivery -->
+    <div class="card">
+      <div class="card-title"><div class="step-num">3</div>Delivery Method</div>
+      <div class="method-grid">
+        <div class="method-btn active" id="btnBank" onclick="setMethod('bank')">
+          <div class="method-icon">🏦</div>
+          <div class="method-label">Bank Account</div>
+          <div class="method-sub">Direct deposit</div>
+        </div>
+        <div class="method-btn" id="btnMobile" onclick="setMethod('mobile')">
+          <div class="method-icon">📱</div>
+          <div class="method-label">Mobile Money</div>
+          <div class="method-sub">Phone number</div>
+        </div>
+      </div>
+
+      <!-- Bank Fields -->
+      <div id="bankFields">
+        <div class="field">
+          <div class="field-label">Bank</div>
+          <select class="field-input" id="bankSelect" onchange="updateSummary()">
+            <option value="">Select bank...</option>
+          </select>
+        </div>
+        <div class="field">
+          <div class="field-label">Account Number</div>
+          <input type="number" class="field-input" id="accountNumber" placeholder="0123456789" oninput="updateSummary()">
+        </div>
+        <div class="field">
+          <div class="field-label">Account Name</div>
+          <input type="text" class="field-input" id="accountName" placeholder="John Doe" oninput="updateSummary()">
+        </div>
+      </div>
+
+      <!-- Mobile Fields -->
+      <div id="mobileFields" style="display:none">
+        <div class="field">
+          <div class="field-label">Recipient Name</div>
+          <input type="text" class="field-input" id="mobileName" placeholder="John Doe" oninput="updateSummary()">
+        </div>
+        <div class="field">
+          <div class="field-label">Phone Number</div>
+          <input type="tel" class="field-input" id="mobilePhone" placeholder="+2348012345678" oninput="updateSummary()">
+        </div>
+      </div>
+    </div>
+
+    <button class="send-btn" id="sendBtn" onclick="handleSend()" disabled>Select country & enter details</button>
+
+    <!-- How It Works -->
+    <div class="how-card">
+      <div class="how-title">📖 How Kudi Arc Send Works</div>
+      <div class="how-step">
+        <div class="how-num">1</div>
+        <div class="how-text"><strong>Send USDC or EURC</strong> from your wallet on Arc Testnet. Gas fees are paid in USDC — near zero cost.</div>
+      </div>
+      <div class="how-step">
+        <div class="how-num">2</div>
+        <div class="how-text"><strong>Choose recipient country</strong> — live exchange rates shown for Nigeria, Kenya, Ghana, Senegal, Cameroon, and more.</div>
+      </div>
+      <div class="how-step">
+        <div class="how-num">3</div>
+        <div class="how-text"><strong>Enter recipient details</strong> — bank account or mobile money number. We support GTBank, OPay, M-Pesa, MTN MoMo, Wave and more.</div>
+      </div>
+      <div class="how-step">
+        <div class="how-num">4</div>
+        <div class="how-text"><strong>Sign in your wallet</strong> — your USDC is approved and the transfer is authorized cryptographically. No passwords needed.</div>
+      </div>
+      <div class="how-step">
+        <div class="how-num">5</div>
+        <div class="how-text"><strong>Recipient gets cash</strong> — NGN, KES, GHS, XOF, FCFA lands in their bank or mobile wallet within minutes on mainnet.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Processing Screen -->
+  <div class="status-screen" id="processingScreen">
+    <div class="status-icon">⏳</div>
+    <div class="status-title" style="color:var(--gold)">Processing...</div>
+    <div class="status-msg" id="processingMsg">Waiting for wallet signature...</div>
+    <div style="width:40px;height:40px;border:3px solid rgba(255,255,255,0.1);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 20px"></div>
+  </div>
+
+  <!-- Success Screen -->
+  <div class="status-screen" id="successScreen">
+    <div class="status-icon">✅</div>
+    <div class="status-title" style="color:var(--jade)">Transfer Sent!</div>
+    <div class="status-msg" id="successMsg"></div>
+    <div class="status-ref" id="successRef"></div>
+    <div class="status-actions">
+      <button class="btn-outline" onclick="resetForm()">Send Another</button>
+      <button class="btn-outline" onclick="window.location='/'">Back to Swap</button>
+    </div>
+  </div>
+
+  <!-- Failed Screen -->
+  <div class="status-screen" id="failedScreen">
+    <div class="status-icon">❌</div>
+    <div class="status-title" style="color:var(--error)">Transfer Failed</div>
+    <div class="status-msg" id="failedMsg"></div>
+    <div class="status-actions">
+      <button class="btn-outline" onclick="showMain()">Try Again</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="confirmOverlay">
+  <div class="modal">
+    <div class="modal-title">Confirm Transfer</div>
+    <div class="modal-sub">Review carefully before signing in your wallet</div>
+    <div class="modal-row"><span class="modal-label">You send</span><span class="modal-value big" id="mSend">—</span></div>
+    <div class="modal-row"><span class="modal-label">Recipient gets</span><span class="modal-value big" style="color:var(--jade)" id="mReceive">—</span></div>
+    <div class="modal-row"><span class="modal-label">Country</span><span class="modal-value" id="mCountry">—</span></div>
+    <div class="modal-row"><span class="modal-label">Rate</span><span class="modal-value" id="mRate">—</span></div>
+    <div class="modal-row"><span class="modal-label">Fee (0.30%)</span><span class="modal-value" id="mFee">—</span></div>
+    <div class="modal-row"><span class="modal-label">Recipient</span><span class="modal-value" id="mRecipient">—</span></div>
+    <div class="modal-row"><span class="modal-label">Via</span><span class="modal-value" id="mBank">—</span></div>
+    <div class="modal-warn">⚠️ You will sign once in your wallet to authorize this transfer. This is cryptographic proof of your intent.</div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeConfirm()">Cancel</button>
+      <button class="btn-confirm" onclick="executeSign()">Sign & Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav" style="display:flex!important;flex-direction:row!important;position:fixed!important;bottom:0!important;left:0!important;right:0!important;height:60px!important;align-items:center!important;background:rgba(7,32,23,0.97);border-top:1px solid rgba(250,245,233,0.1);z-index:9999;box-shadow:0 -2px 12px rgba(0,0,0,0.4)">
+  <a href="/" class="nav-item" style="display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;flex:1!important;height:60px!important;gap:3px;text-decoration:none;font-size:10px;font-weight:600;overflow:hidden"><div class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg></div><span>Swap</span></a>
+  <a href="/send" class="nav-item active" style="display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;flex:1!important;height:60px!important;gap:3px;text-decoration:none;font-size:10px;font-weight:600;overflow:hidden"><div class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5m0 0l-7 7m7-7l7 7"/><rect x="3" y="19" width="18" height="2" rx="1"/></svg></div><span>Send</span></a>
+  <a href="/yield" class="nav-item" style="display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;flex:1!important;height:60px!important;gap:3px;text-decoration:none;font-size:10px;font-weight:600;overflow:hidden"><div class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></div><span>Yield</span></a>
+</nav>
+
+<div class="page-footer">
+  <div class="page-footer-text">Powered by <strong>Arc Testnet</strong> &middot; Built in Africa &#x1F30D;</div>
+    <div class="social-row" style="display:flex;flex-direction:row;justify-content:center;align-items:center;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(250,245,233,0.07)">
+      <a href="https://x.com/KudiArc" target="_blank" class="social-link" style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:rgba(250,245,233,0.05);border:1px solid rgba(250,245,233,0.1);border-radius:10px;color:rgba(250,245,233,0.5);text-decoration:none" title="X / Twitter">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.259 5.63 5.905-5.63zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+      </a>
+      <a href="https://discord.gg/nEJfqrAsqc" target="_blank" class="social-link" style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:rgba(250,245,233,0.05);border:1px solid rgba(250,245,233,0.1);border-radius:10px;color:rgba(250,245,233,0.5);text-decoration:none" title="Discord">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+      </a>
+      <a href="https://github.com/KudiArc/kudi-arc" target="_blank" class="social-link" style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:rgba(250,245,233,0.05);border:1px solid rgba(250,245,233,0.1);border-radius:10px;color:rgba(250,245,233,0.5);text-decoration:none" title="GitHub">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>
+      </a>
+    </div>
+</div>
+
+<div class="hist-overlay" id="histOverlay" onclick="closeHistory()"></div>
+<div class="hist-panel" id="histPanel">
+  <div class="hist-handle"></div>
+  <div class="hist-hdr">
+    <div class="hist-title">Transaction History</div>
+    <button class="hist-close" onclick="closeHistory()">✕</button>
+  </div>
+  <div class="hist-body" id="histBody">
+    <div class="hist-empty">Loading...</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API          = 'https://kudiarc.xyz';
+const USDC_ADDR    = '0x3600000000000000000000000000000000000000';
+const EURC_ADDR    = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
+const KUDI_CONTRACT= '0x8a10D0e61201000B5456EC725165892B08832C5f';
+const ERC20_ABI    = [
+  'function balanceOf(address) view returns (uint256)',
+  'function approve(address,uint256) returns (bool)',
+];
+
+let state = {
+  wallet:null, provider:null, signer:null,
+  method:'bank', countries:[], selectedCountry:null,
+  nigeriaBanks:[], pendingPayload:null,
+  balances:{usdc:0, eurc:0}
+};
+
+// ── Wallet ────────────────────────────────────────────────────
+function updateWalletUI() {
+  const short = state.wallet ? `${state.wallet.slice(0,6)}...${state.wallet.slice(-4)}` : '';
+  const area = document.getElementById('walletArea');
+  if (!area) return;
+  if (state.wallet) {
+    area.innerHTML = `<div style="display:flex;align-items:center;gap:6px;background:rgba(39,174,116,0.12);border:1px solid rgba(39,174,116,0.25);border-radius:20px;padding:5px 12px;font-size:12px;color:#27AE74;"><div style="width:7px;height:7px;background:#27AE74;border-radius:50%;animation:pulse 2s infinite"></div>${short}</div>`;
+  } else {
+    area.innerHTML = `<button class="nav-connect-btn" onclick="connectWallet()" style="display:flex;align-items:center;gap:6px;background:linear-gradient(135deg,#27AE74,#1A6B4A);border:none;border-radius:20px;color:#fff;font-size:12px;font-weight:600;padding:7px 14px;cursor:pointer;">Connect</button>`;
+  }
+}
+
+async function connectWallet() {
+  if (!window.ethereum) { showToast('Please install MetaMask or Rabby','error'); return; }
+  try {
+    await window.ethereum.request({ method:'wallet_addEthereumChain', params:[{
+      chainId:'0x4CEF52', chainName:'Arc Testnet',
+      nativeCurrency:{name:'USDC',symbol:'USDC',decimals:6},
+      rpcUrls:['https://rpc.testnet.arc.network'],
+      blockExplorerUrls:['https://testnet.arcscan.app']
+    }]});
+  } catch(e) {}
+  try {
+    await window.ethereum.request({ method:'wallet_switchEthereumChain', params:[{chainId:'0x4CEF52'}]});
+  } catch(e) {}
+  try {
+    const accounts = await window.ethereum.request({method:'eth_requestAccounts'});
+    state.wallet   = accounts[0];
+    state.provider = new ethers.BrowserProvider(window.ethereum);
+    state.signer   = await state.provider.getSigner();
+    localStorage.setItem('kudiarc_wallet', state.wallet);
+    updateWalletUI();
+    await loadBalances();
+    updateSummary();
+    showToast('Wallet connected ✓','success');
+  } catch(err) { showToast('Connection failed: '+(err.message||err),'error'); }
+}
+
+async function loadBalances() {
+  if (!state.wallet || !state.provider) return;
+  try {
+    const usdc = new ethers.Contract(USDC_ADDR, ERC20_ABI, state.provider);
+    const eurc = new ethers.Contract(EURC_ADDR, ERC20_ABI, state.provider);
+    const uBal = await usdc.balanceOf(state.wallet);
+    const eBal = await eurc.balanceOf(state.wallet);
+    state.balances.usdc = Number(uBal)/1e6;
+    state.balances.eurc = Number(eBal)/1e6;
+    updateBalanceDisplay();
+  } catch(e) {}
+}
+
+function updateBalanceDisplay() {
+  const token = document.getElementById('sendToken')?.value || 'USDC';
+  const bal   = token==='USDC' ? state.balances.usdc : state.balances.eurc;
+  document.getElementById('sendBalance').textContent = `Balance: ${bal.toFixed(2)} ${token}`;
+}
+
+// ── Countries ────────────────────────────────────────────────
+async function loadCountries() {
+  try {
+    const res  = await fetch(`${API}/api/countries`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!data.countries || !data.countries.length) throw new Error('Empty countries');
+    state.countries = data.countries;
+    renderCountries();
+    console.log(`✅ Loaded ${state.countries.length} countries`);
+  } catch(e) {
+    console.error('Countries failed:', e);
+    // Retry once after 2 seconds
+    setTimeout(async () => {
+      try {
+        const res  = await fetch(`${API}/api/countries`);
+        const data = await res.json();
+        if (data.countries?.length) {
+          state.countries = data.countries;
+          renderCountries();
+        }
+      } catch(e2) {
+        const grid = document.getElementById('countryGrid');
+        if (grid) grid.innerHTML = '<div style="color:var(--error);font-size:12px;grid-column:span 2;padding:8px">Failed to load rates. Please refresh.</div>';
+      }
+    }, 2000);
+  }
+}
+
+function renderCountries() {
+  const grid  = document.getElementById('countryGrid');
+  const token = document.getElementById('sendToken')?.value || 'USDC';
+  grid.innerHTML = state.countries.map(c => {
+    const rate = token==='USDC' ? c.rate_per_usd : c.rate_per_eurc;
+    return `<div class="country-opt ${state.selectedCountry?.code===c.code?'selected':''}"
+      onclick="selectCountry('${c.code}')">
+      <div class="country-flag">${c.flag}</div>
+      <div class="country-info">
+        <div class="country-name">${c.name}</div>
+        <div class="country-rate">1 ${token} = ${c.symbol}${parseFloat(rate).toLocaleString(undefined,{maximumFractionDigits:1})}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectCountry(code) {
+  state.selectedCountry = state.countries.find(c => c.code===code);
+  renderCountries();
+  const sel = document.getElementById('bankSelect');
+  sel.innerHTML = '<option value="">Select bank...</option>';
+  if (code==='NG') {
+    state.nigeriaBanks.forEach(b => {
+      const o=document.createElement('option'); o.value=b.code; o.textContent=b.name; o.dataset.name=b.name; sel.appendChild(o);
+    });
+  } else {
+    const COUNTRY_BANKS = {
+      KE: [{code:'MPESA',name:'M-Pesa'},{code:'equity_ke',name:'Equity Bank'},{code:'kcb',name:'KCB Bank'},{code:'cooperative',name:'Cooperative Bank'},{code:'absa_ke',name:'ABSA Kenya'},{code:'stanbic_ke',name:'Stanbic Bank Kenya'}],
+      GH: [{code:'MTN',name:'MTN Mobile Money'},{code:'vodafone_gh',name:'Vodafone Cash'},{code:'airteltigo',name:'AirtelTigo Money'},{code:'gcb',name:'GCB Bank'},{code:'ecobank_gh',name:'Ecobank Ghana'},{code:'absa_gh',name:'ABSA Ghana'}],
+      SN: [{code:'WAVE',name:'Wave'},{code:'orange_sn',name:'Orange Money'},{code:'free_money',name:'Free Money'},{code:'ecobank_sn',name:'Ecobank Senegal'},{code:'bnde',name:'BNDE Bank'}],
+      CI: [{code:'WAVE',name:'Wave'},{code:'orange_ci',name:'Orange Money'},{code:'MTN',name:'MTN MoMo'},{code:'moov_ci',name:'Moov Money'},{code:'ecobank_ci',name:"Ecobank Côte d'Ivoire"}],
+      CM: [{code:'MTN',name:'MTN Mobile Money'},{code:'orange_cm',name:'Orange Money'},{code:'ecobank_cm',name:'Ecobank Cameroon'},{code:'uba_cm',name:'UBA Cameroon'}],
+      TZ: [{code:'MPESA',name:'M-Pesa'},{code:'tigo',name:'Tigo Pesa'},{code:'airtel_tz',name:'Airtel Money'},{code:'crdb',name:'CRDB Bank'},{code:'nmb',name:'NMB Bank'}],
+      UG: [{code:'MTN',name:'MTN Mobile Money'},{code:'airtel_ug',name:'Airtel Money'},{code:'stanbic_ug',name:'Stanbic Bank'},{code:'centenary',name:'Centenary Bank'},{code:'equity_ug',name:'Equity Bank Uganda'}],
+      RW: [{code:'MTN',name:'MTN Mobile Money'},{code:'airtel_rw',name:'Airtel Money'},{code:'bk',name:'Bank of Kigali'},{code:'equity_rw',name:'Equity Bank Rwanda'},{code:'copedu',name:'Copedu MFI'}],
+    };
+    const countryBanks = COUNTRY_BANKS[code] || [{code:'local_bank',name:'Local Bank Transfer'},{code:'mobile_money',name:'Mobile Money'}];
+    countryBanks.forEach(b => {
+      const o=document.createElement('option'); o.value=b.code; o.textContent=b.name; o.dataset.name=b.name; sel.appendChild(o);
+    });
+  }
+  updateSummary();
+}
+
+// ── Banks ─────────────────────────────────────────────────────
+async function loadBanks() {
+  try {
+    const res  = await fetch(`${API}/api/banks`);
+    const data = await res.json();
+    state.nigeriaBanks = data.banks;
+    const sel  = document.getElementById('bankSelect');
+    data.banks.forEach(b => {
+      const o=document.createElement('option'); o.value=b.code; o.textContent=b.name; o.dataset.name=b.name; sel.appendChild(o);
+    });
+  } catch(e) {}
+}
+
+// ── Method ────────────────────────────────────────────────────
+function setMethod(m) {
+  state.method=m;
+  document.getElementById('bankFields').style.display  =m==='bank'  ?'block':'none';
+  document.getElementById('mobileFields').style.display=m==='mobile'?'block':'none';
+  document.getElementById('btnBank').classList.toggle('active',  m==='bank');
+  document.getElementById('btnMobile').classList.toggle('active',m==='mobile');
+  updateSummary();
+}
+
+// ── Summary ───────────────────────────────────────────────────
+function updateSummary() {
+  updateBalanceDisplay();
+  renderCountries();
+  const amount  = parseFloat(document.getElementById('sendAmount').value)||0;
+  const token   = document.getElementById('sendToken')?.value||'USDC';
+  const country = state.selectedCountry;
+  const rate    = country?(token==='USDC'?country.rate_per_usd:country.rate_per_eurc):0;
+  const sym     = country?country.symbol:'';
+  const cur     = country?country.currency:'';
+  const fee     = amount*0.003;
+  const payout  = (amount-fee)*rate;
+
+  document.getElementById('localPreview').textContent = amount>0&&country
+    ? `≈ ${sym}${payout.toLocaleString(undefined,{maximumFractionDigits:0})} ${cur}`
+    : '≈ 0 local currency';
+
+  const rateBox=document.getElementById('rateBox');
+  if (amount>0&&country) {
+    rateBox.classList.add('show');
+    document.getElementById('rateInfo').textContent   =`1 ${token} = ${sym}${parseFloat(rate).toLocaleString(undefined,{maximumFractionDigits:2})} ${cur}`;
+    document.getElementById('rateSend').textContent   =`${amount} ${token}`;
+    document.getElementById('rateFee').textContent    =`${fee.toFixed(4)} ${token}`;
+    document.getElementById('rateReceive').textContent=`${sym}${payout.toLocaleString(undefined,{maximumFractionDigits:0})} ${cur}`;
+  } else { rateBox.classList.remove('show'); }
+
+  const ready = amount>0 && country && isRecipientReady();
+  const btn   = document.getElementById('sendBtn');
+  btn.disabled = !ready||!state.wallet;
+  btn.textContent = !state.wallet?'Connect Wallet First'
+    : !country?'Select recipient country'
+    : !ready?'Enter recipient details'
+    : `Review Transfer → ${sym}${payout.toLocaleString(undefined,{maximumFractionDigits:0})} ${cur}`;
+}
+
+function isRecipientReady() {
+  if (state.method==='bank') {
+    return document.getElementById('bankSelect').value &&
+           document.getElementById('accountNumber').value.length>=8 &&
+           document.getElementById('accountName').value.length>2;
+  }
+  return document.getElementById('mobileName').value.length>2 &&
+         document.getElementById('mobilePhone').value.length>=10;
+}
+
+// ── Send Flow ─────────────────────────────────────────────────
+function handleSend() {
+  if (!state.wallet) { connectWallet(); return; }
+  const amount  = parseFloat(document.getElementById('sendAmount').value)||0;
+  const token   = document.getElementById('sendToken')?.value||'USDC';
+  const country = state.selectedCountry;
+  if (!amount||!country) return;
+
+  // Balance check
+  const bal = token==='USDC'?state.balances.usdc:state.balances.eurc;
+  if (amount>bal) { showToast(`Insufficient ${token}. You have ${bal.toFixed(2)}`,'error'); return; }
+
+  const rate   = token==='USDC'?country.rate_per_usd:country.rate_per_eurc;
+  const fee    = amount*0.003;
+  const payout = (amount-fee)*rate;
+  const sym    = country.symbol;
+  const cur    = country.currency;
+
+  let recipient='', bank='';
+  if (state.method==='bank') {
+    const sel=document.getElementById('bankSelect');
+    recipient=document.getElementById('accountName').value;
+    bank=sel.options[sel.selectedIndex]?.dataset?.name||sel.options[sel.selectedIndex]?.text||'';
+    state.pendingPayload={wallet:state.wallet,amount_usdc:amount,token,country_code:country.code,
+      currency:cur,bank_code:sel.value,bank_name:bank,
+      account_number:document.getElementById('accountNumber').value,
+      account_name:recipient,recipient_name:recipient,method:'bank'};
+  } else {
+    recipient=document.getElementById('mobileName').value;
+    bank='Mobile Money';
+    state.pendingPayload={wallet:state.wallet,amount_usdc:amount,token,country_code:country.code,
+      currency:cur,recipient_name:recipient,
+      phone:document.getElementById('mobilePhone').value,method:'mobile'};
+  }
+
+  document.getElementById('mSend').textContent     =`${amount} ${token}`;
+  document.getElementById('mReceive').textContent  =`${sym}${payout.toLocaleString(undefined,{maximumFractionDigits:0})} ${cur}`;
+  document.getElementById('mCountry').textContent  =`${country.flag} ${country.name}`;
+  document.getElementById('mRate').textContent     =`1 ${token} = ${sym}${parseFloat(rate).toFixed(2)} ${cur}`;
+  document.getElementById('mFee').textContent      =`${fee.toFixed(4)} ${token}`;
+  document.getElementById('mRecipient').textContent=recipient;
+  document.getElementById('mBank').textContent     =bank;
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+
+function closeConfirm() { document.getElementById('confirmOverlay').classList.remove('show'); }
+
+async function executeSign() {
+  closeConfirm();
+  showStatus('processing');
+  document.getElementById('processingMsg').textContent='Requesting wallet signature...';
+  const amount = state.pendingPayload.amount_usdc;
+  const token  = state.pendingPayload.token||'USDC';
+  const tokenAddr = token==='USDC'?USDC_ADDR:EURC_ADDR;
+  const amountWei = BigInt(Math.floor(amount*1_000_000));
+
+  try {
+    const tokenContract = new ethers.Contract(tokenAddr, ERC20_ABI, state.provider);
+
+    document.getElementById('processingMsg').textContent='Verifying balance...';
+    const bal = await tokenContract.balanceOf(state.wallet);
+    if (BigInt(bal)<amountWei) {
+      showStatus('failed');
+      document.getElementById('failedMsg').textContent=`Insufficient ${token} balance.`;
+      return;
+    }
+
+    document.getElementById('processingMsg').textContent='Sign transfer authorization...';
+    const msg = `KudiArc Transfer\nAmount: ${amount} ${token}\nTo: ${state.pendingPayload.recipient_name}\nCountry: ${state.pendingPayload.country_code}\nTime: ${Date.now()}`;
+    const sig = await state.signer.signMessage(msg);
+
+    document.getElementById('processingMsg').textContent='Processing payout...';
+    const res  = await fetch(`${API}/api/send/payout`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({...state.pendingPayload, signature:sig})
+    });
+    const data = await res.json();
+
+    if (data.status&&(data.status.includes('success')||data.status==='pending')) {
+      showStatus('success');
+      const country = state.selectedCountry;
+      document.getElementById('successMsg').textContent =
+        `${country?.symbol||''}${data.payout_amount?.toLocaleString()||''} ${data.currency||''} is being sent to ${state.pendingPayload.recipient_name}. ${data.message||''}`;
+      document.getElementById('successRef').textContent =
+        `Reference: ${data.reference}\nPartner: ${data.partner||'Flutterwave'}`;
+    } else {
+      throw new Error(data.error||'Backend error');
+    }
+  } catch(e) {
+    const msg=e?.reason||e?.message||'Failed';
+    showStatus('failed');
+    document.getElementById('failedMsg').textContent =
+      msg.includes('user rejected')||msg.includes('User denied')
+        ?'You rejected the transaction in your wallet.'
+        :msg.includes('insufficient')?'Insufficient balance'
+        :msg.slice(0,100);
+  }
+}
+
+function showStatus(type) {
+  ['mainForm','processingScreen','successScreen','failedScreen'].forEach(id => {
+    const el=document.getElementById(id);
+    if (id==='mainForm') el.style.display=type?'none':'block';
+    else el.classList.toggle('show', id===type+'Screen');
+  });
+}
+
+function showMain() {
+  document.getElementById('mainForm').style.display='block';
+  ['processingScreen','successScreen','failedScreen'].forEach(id=>document.getElementById(id).classList.remove('show'));
+}
+
+function resetForm() {
+  showMain();
+  document.getElementById('sendAmount').value='';
+  document.getElementById('accountNumber').value='';
+  document.getElementById('accountName').value='';
+  document.getElementById('bankSelect').value='';
+  document.getElementById('mobileName').value='';
+  document.getElementById('mobilePhone').value='';
+  state.selectedCountry=null;
+  renderCountries();
+  updateSummary();
+}
+
+let _toastTimer = null;
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  if (_toastTimer) { clearTimeout(_toastTimer); _toastTimer = null; }
+  t.textContent = msg;
+  t.className = 'toast';
+  void t.offsetWidth;
+  t.className = `toast ${type} show`;
+  _toastTimer = setTimeout(() => {
+    t.className = 'toast';
+    _toastTimer = null;
+  }, 4000);
+}
+
+
+
+// ── App Init ─────────────────────────────────────────
+(async () => {
+  await Promise.all([loadBanks(), loadCountries()]);
+  updateSummary();
+
+  if (!window.ethereum) return;
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+    if (accounts.length > 0) {
+      state.wallet   = accounts[0];
+      state.provider = new ethers.BrowserProvider(window.ethereum);
+      state.signer   = await state.provider.getSigner();
+      localStorage.setItem('kudiarc_wallet', accounts[0]);
+      updateWalletUI();
+      await loadBalances();
+      updateSummary();
+    }
+    window.ethereum.on('accountsChanged', async (accs) => {
+      if (accs.length === 0) {
+        state.wallet = null; state.signer = null;
+        localStorage.removeItem('kudiarc_wallet');
+      } else {
+        state.wallet   = accs[0];
+        state.provider = new ethers.BrowserProvider(window.ethereum);
+        state.signer   = await state.provider.getSigner();
+        localStorage.setItem('kudiarc_wallet', accs[0]);
+        await loadBalances();
+        updateSummary();
+      }
+      updateWalletUI();
+    });
+    window.ethereum.on('chainChanged', () => window.location.reload());
+  } catch(e) { console.warn('Init error:', e); }
+})();
+
+function openHistory() {
+  const wallet = (typeof state !== 'undefined' && state.wallet) || (typeof walletAddress !== 'undefined' && walletAddress);
+  if (!wallet) { if (typeof showToast === 'function') showToast('Connect wallet to view history', 'info'); return; }
+  document.getElementById('histOverlay').classList.add('open');
+  document.getElementById('histPanel').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  loadHistory(wallet);
+}
+function closeHistory() {
+  document.getElementById('histOverlay').classList.remove('open');
+  document.getElementById('histPanel').classList.remove('open');
+  document.body.style.overflow = '';
+}
+async function loadHistory(wallet) {
+  const body = document.getElementById('histBody');
+  body.innerHTML = '<div class="hist-empty">Loading...</div>';
+  const API_BASE = (typeof CONFIG !== 'undefined' && CONFIG.API_BASE) || (typeof API === 'string' ? API : 'https://kudiarc.xyz');
+  try {
+    const res = await fetch(`${API_BASE}/api/history/${wallet}`);
+    const data = await res.json();
+    const txs = data.transactions || data || [];
+    if (!txs.length) { body.innerHTML = '<div class="hist-empty">No transactions yet</div>'; return; }
+    body.innerHTML = txs.map(tx => {
+      const isSwap = tx.tx_type === 'swap';
+      const isSend = tx.tx_type === 'send';
+      const date = tx.created_at ? new Date(tx.created_at).toLocaleDateString('en-NG',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+      const status = tx.status || '';
+      const isMockDone = status === 'mock_success' || status === 'completed';
+      const hash = tx.tx_hash
+        ? `<a href="https://testnet.arcscan.app/tx/${tx.tx_hash}" target="_blank" style="color:#27AE74;text-decoration:none">${tx.tx_hash.slice(0,10)}…</a>`
+        : isMockDone
+          ? '<span style="color:#27AE74">Sent ✓ (sandbox)</span>'
+          : '<span style="color:#4a6355">pending</span>';
+      const amtIn = parseFloat(tx.amount_in||0).toFixed(4);
+      const amtOut = parseFloat(tx.amount_out||0).toFixed(4);
+      if (isSwap) return `<div class="htx"><div class="htx-ico swap">⇄</div><div class="htx-body"><div class="htx-title">${tx.from_token||'USDC'} → ${tx.to_token||'EURC'}</div><div class="htx-sub">${hash}</div></div><div class="htx-right"><div class="htx-amt">${amtIn} → ${amtOut}</div><div class="htx-time">${date}</div></div></div>`;
+      if (isSend) return `<div class="htx"><div class="htx-ico send">↑</div><div class="htx-body"><div class="htx-title">Send · ${tx.country||'Africa'}</div><div class="htx-sub">${hash}</div></div><div class="htx-right"><div class="htx-amt send">${amtIn} ${tx.from_token||'USDC'}</div><div class="htx-time">${date}</div></div></div>`;
+      return `<div class="htx"><div class="htx-ico yield">📈</div><div class="htx-body"><div class="htx-title">Yield · ${tx.tx_type}</div><div class="htx-sub">${hash}</div></div><div class="htx-right"><div class="htx-amt">${amtIn}</div><div class="htx-time">${date}</div></div></div>`;
+    }).join('');
+  } catch(e) { body.innerHTML = '<div class="hist-empty">Failed to load history</div>'; }
+}
+
+</script>
+</body>
+</html>

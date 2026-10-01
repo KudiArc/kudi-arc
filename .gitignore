@@ -1,0 +1,18 @@
+.env
+.env.local
+kudi.db
+*.log
+logs/
+cache/
+__pycache__/
+kudi-env/
+out/
+*.pyc
+*.save
+
+# Deployment/runtime artifacts
+admin_state.json
+deployment.json
+exact-input.json
+standard-input.json
+deploy.js

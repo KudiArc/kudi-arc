@@ -1,0 +1,1669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>KudiArc — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#070B0F;--s1:#0C1117;--s2:#111820;--s3:#162030;--s4:#1a2a3a;
+  --border:#1C2A3A;--border2:#243040;--border3:#2d3f52;
+  --amber:#F5A623;--amber2:#E8851A;--amber-dim:rgba(245,166,35,0.12);--amber-glow:rgba(245,166,35,0.06);
+  --red:#E05C5C;--red-dim:rgba(224,92,92,0.1);
+  --green:#2ECC8A;--green-dim:rgba(46,204,138,0.1);--green-glow:rgba(46,204,138,0.05);
+  --blue:#4A9EFF;--blue-dim:rgba(74,158,255,0.1);
+  --purple:#9B6DFF;--purple-dim:rgba(155,109,255,0.1);
+  --muted:#3D5068;--muted2:#5A7A9A;--text:#8FAABF;--bright:#D4E5F5;
+  --mono:'IBM Plex Mono',monospace;--sans:'Plus Jakarta Sans',sans-serif;
+  --r:10px;--r2:14px;--r3:18px;
+  --sidebar:220px;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;display:flex;flex-direction:column}
+body::after{content:'';position:fixed;inset:0;background:
+  radial-gradient(ellipse 60% 40% at 100% 0%,rgba(245,166,35,0.03) 0%,transparent 60%),
+  radial-gradient(ellipse 40% 60% at 0% 100%,rgba(46,204,138,0.03) 0%,transparent 60%);
+  pointer-events:none;z-index:0}
+
+/* ── Auth Gate ── */
+#authGate{position:fixed;inset:0;background:var(--bg);z-index:900;display:flex;align-items:center;justify-content:center}
+#authGate.gone{display:none}
+.auth-box{text-align:center;max-width:360px;padding:0 24px}
+.auth-logo-wrap{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:28px}
+.auth-mark{width:48px;height:48px;background:linear-gradient(135deg,var(--amber),var(--amber2));border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:20px;color:#000;box-shadow:0 8px 32px rgba(245,166,35,0.3)}
+.auth-brand{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--bright)}
+.auth-brand span{color:var(--amber)}
+.auth-label{font-family:var(--mono);font-size:10px;letter-spacing:3px;color:var(--muted2);text-transform:uppercase;margin-bottom:8px}
+.auth-title{font-size:28px;font-weight:700;color:var(--bright);margin-bottom:6px}
+.auth-sub{font-size:13px;color:var(--muted2);margin-bottom:32px;line-height:1.6}
+.auth-divider{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.auth-divider span{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:2px}
+.auth-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:linear-gradient(135deg,var(--amber),var(--amber2));color:#000;font-family:var(--mono);font-size:13px;font-weight:700;padding:15px;border:none;border-radius:var(--r2);cursor:pointer;letter-spacing:1px;transition:all 0.2s;box-shadow:0 4px 20px rgba(245,166,35,0.25)}
+.auth-btn:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(245,166,35,0.35)}
+.auth-err{font-family:var(--mono);font-size:11px;color:var(--red);margin-top:14px;line-height:1.6;background:var(--red-dim);border:1px solid rgba(224,92,92,0.2);border-radius:var(--r);padding:10px 14px;display:none}
+
+/* ── Topbar ── */
+.topbar{position:fixed;top:0;left:0;right:0;height:54px;background:rgba(7,11,15,0.95);border-bottom:1px solid var(--border);backdrop-filter:blur(20px);z-index:200;display:flex;align-items:center;padding:0 16px;gap:12px}
+.tb-mark{width:28px;height:28px;background:linear-gradient(135deg,var(--amber),var(--amber2));border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:12px;color:#000;flex-shrink:0}
+.tb-brand{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--bright)}
+.tb-tag{background:var(--amber-dim);border:1px solid rgba(245,166,35,0.25);border-radius:5px;padding:2px 7px;font-family:var(--mono);font-size:9px;color:var(--amber);letter-spacing:1px}
+.tb-right{display:flex;align-items:center;gap:10px;margin-left:auto}
+.tb-rpc{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--muted2)}
+.rpc-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;animation:pulse 2.5s infinite}
+.rpc-dot.off{background:var(--red);animation:none}
+.tb-wallet{background:var(--green-dim);border:1px solid rgba(46,204,138,0.2);border-radius:20px;padding:4px 12px;font-family:var(--mono);font-size:11px;color:var(--green)}
+.tb-refresh{background:var(--amber-dim);border:1px solid rgba(245,166,35,0.2);border-radius:8px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--amber);cursor:pointer;transition:all 0.2s;letter-spacing:0.5px}
+.tb-refresh:hover{background:rgba(245,166,35,0.2)}
+.auto-badge{font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:0.5px}
+
+/* ── Layout ── */
+.layout{display:flex;min-height:calc(100vh - 54px);margin-top:54px;position:relative;z-index:1}
+
+/* ── Sidebar ── */
+.sidebar{width:var(--sidebar);flex-shrink:0;background:var(--s1);border-right:1px solid var(--border);position:fixed;top:54px;bottom:0;left:0;overflow-y:auto;display:flex;flex-direction:column}
+.sidebar::-webkit-scrollbar{width:3px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border2)}
+.sb-section{padding:12px 10px 4px;font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px}
+.sb-item{display:flex;align-items:center;gap:9px;padding:9px 12px;color:var(--muted2);cursor:pointer;transition:all 0.15s;border-radius:var(--r);margin:1px 6px;text-decoration:none;font-size:13px;font-weight:500}
+.sb-item:hover{background:var(--s2);color:var(--text)}
+.sb-item.active{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,166,35,0.15)}
+.sb-item svg{flex-shrink:0;opacity:0.7}
+.sb-item.active svg{opacity:1}
+.sb-divider{height:1px;background:var(--border);margin:6px 12px}
+.sb-footer{margin-top:auto;padding:12px;border-top:1px solid var(--border)}
+.sb-footer-text{font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center;line-height:1.8}
+.sb-status{display:flex;align-items:center;gap:5px;justify-content:center;margin-top:4px}
+.sb-status-dot{width:5px;height:5px;background:var(--green);border-radius:50%;animation:pulse 2s infinite}
+
+/* ── Main content ── */
+.main{flex:1;margin-left:var(--sidebar);padding:24px 24px 60px;max-width:1200px}
+
+/* ── Pages ── */
+.page{display:none}
+.page.active{display:block}
+
+/* ── Page header ── */
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.page-title{font-size:18px;font-weight:700;color:var(--bright)}
+.page-sub{font-size:12px;color:var(--muted2);margin-top:2px}
+.page-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ── KPI Row ── */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:20px}
+.kpi{background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);padding:16px;position:relative;overflow:hidden;transition:border-color 0.2s,transform 0.15s}
+.kpi:hover{border-color:var(--border2);transform:translateY(-1px)}
+.kpi-glow{position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--amber),transparent);opacity:0.4}
+.kpi-glow.g{background:linear-gradient(90deg,transparent,var(--green),transparent)}
+.kpi-glow.b{background:linear-gradient(90deg,transparent,var(--blue),transparent)}
+.kpi-glow.p{background:linear-gradient(90deg,transparent,var(--purple),transparent)}
+.kpi-lbl{font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted2);text-transform:uppercase;margin-bottom:8px}
+.kpi-val{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--bright);line-height:1;margin-bottom:4px}
+.kpi-val.g{color:var(--green)}.kpi-val.a{color:var(--amber)}.kpi-val.r{color:var(--red)}.kpi-val.b{color:var(--blue)}.kpi-val.p{color:var(--purple)}
+.kpi-sub{font-size:11px;color:var(--muted2)}
+.kpi-trend{font-family:var(--mono);font-size:10px;position:absolute;top:12px;right:12px}
+.kpi-trend.up{color:var(--green)}.kpi-trend.dn{color:var(--red)}
+
+/* ── Cards ── */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);padding:18px;margin-bottom:12px}
+.card-hdr{font-family:var(--mono);font-size:10px;color:var(--muted2);letter-spacing:1px;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card-hdr-line{flex:1;height:1px;background:var(--border)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media(max-width:700px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}
+@media(max-width:900px){.grid3{grid-template-columns:1fr 1fr}.grid4{grid-template-columns:1fr 1fr}}
+
+/* ── Mini chart ── */
+.minichart{height:56px;display:flex;align-items:flex-end;gap:3px;padding-top:8px}
+.mcbar{flex:1;border-radius:2px 2px 0 0;background:var(--amber-dim);border:1px solid rgba(245,166,35,0.2);transition:height 0.4s ease;min-height:3px;cursor:pointer;position:relative}
+.mcbar:hover{background:rgba(245,166,35,0.25)}
+.mcbar.green{background:rgba(46,204,138,0.15);border-color:rgba(46,204,138,0.25)}
+.mcbar.green:hover{background:rgba(46,204,138,0.25)}
+.mcbar-tip{position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:var(--s3);border:1px solid var(--border2);border-radius:5px;padding:3px 7px;font-family:var(--mono);font-size:9px;color:var(--bright);white-space:nowrap;display:none;z-index:10}
+.mcbar:hover .mcbar-tip{display:block}
+
+/* ── Tables ── */
+.rtable{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px}
+.rtable th{text-align:left;font-size:9px;letter-spacing:1px;color:var(--muted2);padding:6px 10px;border-bottom:1px solid var(--border)}
+.rtable td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,0.03);color:var(--text);vertical-align:middle}
+.rtable td.a{color:var(--amber)}.rtable td.g{color:var(--green)}.rtable td.r{color:var(--red)}.rtable td.b{color:var(--blue)}
+.rtable tr:last-child td{border-bottom:none}
+.rtable tr:hover td{background:rgba(255,255,255,0.02)}
+.rtable-wrap{overflow-x:auto}
+
+/* ── Pool bars ── */
+.pool-row{margin-bottom:12px}
+.pool-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.pool-name{font-family:var(--mono);font-size:11px;color:var(--bright);display:flex;align-items:center;gap:6px}
+.pool-badge{width:8px;height:8px;border-radius:50%}
+.pool-val{font-family:var(--mono);font-size:11px;color:var(--amber)}
+.pool-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.pool-fill{height:100%;border-radius:4px;transition:width 0.6s ease}
+.pool-fill.usdc{background:linear-gradient(90deg,#2775CA,#4A9EFF)}
+.pool-fill.eurc{background:linear-gradient(90deg,#0052B4,#4A9EFF)}
+.pool-fill.usyc{background:linear-gradient(90deg,var(--green),#20A870)}
+
+/* ── Forms ── */
+.fgroup{margin-bottom:12px}
+.flabel{font-family:var(--mono);font-size:10px;color:var(--muted2);letter-spacing:0.8px;margin-bottom:6px;display:block}
+.frow{display:flex;gap:7px;align-items:stretch}
+.finput{flex:1;background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:9px 12px;font-family:var(--mono);font-size:12px;color:var(--bright);outline:none;transition:border-color 0.2s;min-width:0}
+.finput:focus{border-color:rgba(245,166,35,0.4);background:var(--s3)}
+.finput::placeholder{color:var(--muted)}
+select.finput{cursor:pointer}
+.finput-search{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;font-family:var(--mono);font-size:12px;color:var(--bright);outline:none;width:100%;transition:border-color 0.2s}
+.finput-search:focus{border-color:rgba(245,166,35,0.4)}
+
+/* ── Buttons ── */
+.btn{padding:9px 14px;border:none;border-radius:var(--r);font-family:var(--mono);font-size:11px;font-weight:700;cursor:pointer;transition:all 0.18s;letter-spacing:0.5px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.btn:disabled{opacity:0.35;cursor:not-allowed!important}
+.btn-a{background:linear-gradient(135deg,var(--amber),var(--amber2));color:#000}
+.btn-a:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 16px rgba(245,166,35,0.3)}
+.btn-r{background:var(--red-dim);color:var(--red);border:1px solid rgba(224,92,92,0.25)}
+.btn-r:hover:not(:disabled){background:rgba(224,92,92,0.18)}
+.btn-g{background:var(--green-dim);color:var(--green);border:1px solid rgba(46,204,138,0.25)}
+.btn-g:hover:not(:disabled){background:rgba(46,204,138,0.18)}
+.btn-b{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(74,158,255,0.2)}
+.btn-b:hover:not(:disabled){background:rgba(74,158,255,0.15)}
+.btn-ghost{background:transparent;color:var(--muted2);border:1px solid var(--border)}
+.btn-ghost:hover:not(:disabled){color:var(--text);border-color:var(--border2)}
+.btn-full{width:100%;justify-content:center}
+.btn-sm{padding:6px 10px;font-size:10px}
+.btn-xs{padding:4px 8px;font-size:9px}
+
+/* ── Switches ── */
+.switch{position:relative;width:44px;height:22px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;background:var(--border2);border-radius:22px;cursor:pointer;transition:0.25s}
+.slider::before{content:'';position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:var(--muted2);border-radius:50%;transition:0.25s}
+input:checked+.slider{background:var(--amber)}
+input:checked+.slider::before{transform:translateX(22px);background:#000}
+.switch-red input:checked+.slider{background:var(--red)}
+.switch-red input:checked+.slider::before{background:#fff}
+.switch-g input:checked+.slider{background:var(--green)}
+.switch-g input:checked+.slider::before{background:#000}
+.trow{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.trow:last-child{border-bottom:none;padding-bottom:0}
+.trow:first-child{padding-top:0}
+.t-name{font-size:13px;font-weight:500;color:var(--bright);margin-bottom:2px}
+.t-desc{font-size:11px;color:var(--muted2)}
+
+/* ── Badges/chips ── */
+.badge{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;letter-spacing:0.5px;font-weight:700}
+.badge-g{background:var(--green-dim);color:var(--green);border:1px solid rgba(46,204,138,0.2)}
+.badge-r{background:var(--red-dim);color:var(--red);border:1px solid rgba(224,92,92,0.2)}
+.badge-a{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,166,35,0.2)}
+.badge-b{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(74,158,255,0.2)}
+.chip{font-family:var(--mono);font-size:10px;color:var(--muted2);background:var(--s2);border:1px solid var(--border);border-radius:5px;padding:5px 10px;word-break:break-all;line-height:1.7}
+.chip a{color:var(--amber);text-decoration:none}
+.chip a:hover{text-decoration:underline}
+
+/* ── Log ── */
+.log-box{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:10px;max-height:280px;overflow-y:auto;font-family:var(--mono);font-size:11px}
+.log-box::-webkit-scrollbar{width:3px}
+.log-box::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.lline{display:flex;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.03);align-items:flex-start}
+.lline:last-child{border-bottom:none}
+.lt{color:var(--muted);flex-shrink:0;width:46px;font-size:10px;margin-top:1px}
+.ltag{flex-shrink:0;padding:1px 5px;border-radius:3px;font-size:9px;letter-spacing:0.5px}
+.ltag.ok{background:var(--green-dim);color:var(--green)}
+.ltag.err{background:var(--red-dim);color:var(--red)}
+.ltag.info{background:var(--amber-dim);color:var(--amber)}
+.ltag.warn{background:var(--blue-dim);color:var(--blue)}
+.lmsg{color:var(--text);word-break:break-all;line-height:1.4}
+
+/* ── Misc ── */
+.warn-box{background:var(--red-dim);border:1px solid rgba(224,92,92,0.2);border-radius:var(--r);padding:10px 13px;font-size:12px;color:rgba(224,92,92,0.9);margin-bottom:12px}
+.info-box{background:var(--blue-dim);border:1px solid rgba(74,158,255,0.2);border-radius:var(--r);padding:10px 13px;font-size:12px;color:rgba(74,158,255,0.9);margin-bottom:12px}
+.maint-preview{background:repeating-linear-gradient(-45deg,rgba(245,166,35,0.04),rgba(245,166,35,0.04) 10px,transparent 10px,transparent 20px);border:1px solid rgba(245,166,35,0.2);border-radius:var(--r);padding:12px 14px;margin-top:12px;display:none}
+.maint-preview.show{display:block}
+.maint-ptag{font-family:var(--mono);font-size:9px;color:var(--amber);letter-spacing:2px;margin-bottom:5px}
+.maint-pmsg{font-size:13px;color:var(--text);line-height:1.5}
+.empty-state{text-align:center;padding:32px 16px;color:var(--muted);font-family:var(--mono);font-size:12px}
+.empty-state svg{display:block;margin:0 auto 10px;opacity:0.3}
+.divider{height:1px;background:var(--border);margin:16px 0}
+
+/* ── Wallet explorer ── */
+.wallet-card{background:var(--s2);border:1px solid var(--border2);border-radius:var(--r);padding:14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.wallet-addr{font-family:var(--mono);font-size:12px;color:var(--bright)}
+.wallet-meta{font-family:var(--mono);font-size:10px;color:var(--muted2);margin-top:2px}
+
+/* ── Health indicators ── */
+.health-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.health-row:last-child{border-bottom:none}
+.health-name{font-family:var(--mono);font-size:12px;color:var(--bright)}
+.health-val{font-family:var(--mono);font-size:11px;color:var(--muted2);margin-top:2px}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);padding:12px 18px;font-family:var(--mono);font-size:12px;max-width:340px;transform:translateY(80px);opacity:0;transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);z-index:999;line-height:1.4;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.ok{border-color:rgba(46,204,138,0.4);color:var(--green)}
+.toast.err{border-color:rgba(224,92,92,0.4);color:var(--red)}
+.toast.info{border-color:rgba(245,166,35,0.4);color:var(--amber)}
+
+/* ── Animations ── */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.loading{background:linear-gradient(90deg,var(--muted) 25%,var(--muted2) 50%,var(--muted) 75%);background-size:200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 1.5s infinite}
+.fade-in{animation:fadeIn 0.3s ease both}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* ── Mobile ── */
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%);transition:transform 0.3s;z-index:150}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0;padding:16px}
+  .mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:140}
+  .mob-overlay.show{display:block}
+  .kpi-row{grid-template-columns:1fr 1fr}
+  .tb-menu-btn{display:flex!important}
+}
+.tb-menu-btn{display:none;align-items:center;justify-content:center;width:32px;height:32px;background:var(--s2);border:1px solid var(--border);border-radius:8px;cursor:pointer;color:var(--muted2)}
+</style>
+</head>
+<body>
+
+<!-- Auth Gate -->
+<div id="authGate">
+  <div class="auth-box">
+    <div class="auth-logo-wrap">
+      <div class="auth-mark">K</div>
+      <div class="auth-brand">Kudi<span>Arc</span></div>
+    </div>
+    <div class="auth-label">Restricted Access</div>
+    <div class="auth-title">Admin Dashboard</div>
+    <div class="auth-sub">Connect the owner wallet to access the control panel. All other wallets are denied.</div>
+    <div class="auth-divider"><span>AUTHENTICATE</span></div>
+    <button class="auth-btn" onclick="authConnect()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Connect Owner Wallet
+    </button>
+    <div class="auth-err" id="authErr"></div>
+  </div>
+</div>
+
+<!-- Topbar -->
+<nav class="topbar">
+  <button class="tb-menu-btn" onclick="toggleSidebar()" style="display:none">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="tb-mark">K</div>
+  <div class="tb-brand">KudiArc</div>
+  <div class="tb-tag">ADMIN</div>
+  <div class="tb-right">
+    <span class="auto-badge" id="autoLabel">● AUTO</span>
+    <div class="tb-rpc"><div class="rpc-dot" id="rpcDot"></div><span id="rpcLbl">Arc —</span></div>
+    <div class="tb-wallet" id="tbWallet">—</div>
+    <button class="tb-refresh" onclick="refreshAll()">↺ Refresh</button>
+  </div>
+</nav>
+
+<div class="mob-overlay" id="mobOverlay" onclick="toggleSidebar()"></div>
+
+<div class="layout">
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sb-section">Overview</div>
+  <a class="sb-item active" onclick="showPage('overview');return false;" href="javascript:void(0)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    Dashboard
+  </a>
+  <a class="sb-item" onclick="showPage('analytics');return false;" href="javascript:void(0)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+    Analytics
+  </a>
+  <a class="sb-item" onclick="showPage('transactions');return false;" href="javascript:void(0)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+    Transactions
+  </a>
+  <a class="sb-item" onclick="showPage('wallets');return false;" href="javascript:void(0)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/><circle cx="16" cy="14" r="1.5" fill="currentColor"/></svg>
+    Wallets
+  </a>
+  <div class="sb-divider"></div>
+  <div class="sb-section">Protocol</div>
+  <a class="sb-item" onclick="showPage('liquidity');return false;" href="javascript:void(0)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v6l4 2"/></svg>
+    Liquidity
+  </a>
+  <a class="sb-item" onclick="showPage('rates');return false;" href="javascript:void(0)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    FX Rates
+  </a>
+  <a class="sb-item" onclick="showPage('contracts');return false;" href="javascript:void(0)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+    Contracts
+  </a>
+  <a class="sb-item" onclick="showPage('send');return false;" href="javascript:void(0)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5m0 0l-7 7m7-7l7 7"/><rect x="3" y="19" width="18" height="2" rx="1"/></svg>
+    Send / Payout
+  </a>
+  <div class="sb-divider"></div>
+  <div class="sb-section">System</div>
+  <a class="sb-item" onclick="showPage('maintenance');return false;" href="javascript:void(0)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+    Maintenance
+  </a>
+  <a class="sb-item" onclick="showPage('emergency');return false;" href="javascript:void(0)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    Emergency
+  </a>
+  <a class="sb-item" onclick="showPage('log');return false;" href="javascript:void(0)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+    Activity Log
+  </a>
+  <div class="sb-footer">
+    <div class="sb-status"><div class="sb-status-dot"></div><span style="font-family:var(--mono);font-size:9px;color:var(--muted)">Arc Testnet</span></div>
+    <div class="sb-footer-text" id="sbUptime">Uptime: —</div>
+  </div>
+</aside>
+
+<!-- Main -->
+<main class="main">
+
+<!-- ═══════════════════════════════════════════
+     PAGE: DASHBOARD
+════════════════════════════════════════════ -->
+<div class="page active fade-in" id="page-overview">
+  <div class="page-hdr">
+    <div><div class="page-title">Dashboard</div><div class="page-sub">Protocol overview — auto-refreshes every 30s</div></div>
+    <div class="page-actions">
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ Export CSV</button>
+      <button class="btn btn-a btn-sm" onclick="refreshAll()">↺ Refresh All</button>
+    </div>
+  </div>
+
+  <!-- KPI Row -->
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-glow g"></div><div class="kpi-lbl">Unique Wallets</div><div class="kpi-val b loading" id="s_wallets">—</div><div class="kpi-sub">all time</div></div>
+    <div class="kpi"><div class="kpi-glow"></div><div class="kpi-lbl">Total Swaps</div><div class="kpi-val a loading" id="s_swaps">—</div><div class="kpi-sub" id="s_swap_sub">on-chain</div></div>
+    <div class="kpi"><div class="kpi-glow"></div><div class="kpi-lbl">Total Sends</div><div class="kpi-val a loading" id="s_sends">—</div><div class="kpi-sub">off-ramp</div></div>
+    <div class="kpi"><div class="kpi-glow g"></div><div class="kpi-lbl">Total Fees</div><div class="kpi-val g loading" id="s_fees">—</div><div class="kpi-sub">USDC earned</div></div>
+    <div class="kpi"><div class="kpi-glow b"></div><div class="kpi-lbl">Swap Volume</div><div class="kpi-val b loading" id="s_volume">—</div><div class="kpi-sub">USDC equiv.</div></div>
+    <div class="kpi"><div class="kpi-glow g"></div><div class="kpi-lbl">KudiYield TVL</div><div class="kpi-val g loading" id="s_yield_state">—</div><div class="kpi-sub">USYC vault</div></div>
+    <div class="kpi"><div class="kpi-glow"></div><div class="kpi-lbl">KudiSwap</div><div class="kpi-val loading" id="s_swap_state">—</div><div class="kpi-sub">contract status</div></div>
+    <div class="kpi"><div class="kpi-glow g"></div><div class="kpi-lbl">RPC Status</div><div class="kpi-val g loading" id="s_rpc">—</div><div class="kpi-sub">Arc Testnet</div></div>
+  </div>
+
+  <div class="grid2">
+    <!-- Pool Balances -->
+    <div class="card">
+      <div class="card-hdr">Pool Balances <div class="card-hdr-line"></div></div>
+      <div class="pool-row">
+        <div class="pool-head"><span class="pool-name"><div class="pool-badge" style="background:#2775CA"></div>USDC</span><span class="pool-val" id="pl_usdc">—</span></div>
+        <div class="pool-bar"><div class="pool-fill usdc" id="pb_usdc" style="width:0%"></div></div>
+      </div>
+      <div class="pool-row">
+        <div class="pool-head"><span class="pool-name"><div class="pool-badge" style="background:#0052B4"></div>EURC</span><span class="pool-val" id="pl_eurc">—</span></div>
+        <div class="pool-bar"><div class="pool-fill eurc" id="pb_eurc" style="width:0%"></div></div>
+      </div>
+      <div class="pool-row" style="margin-bottom:0">
+        <div class="pool-head"><span class="pool-name"><div class="pool-badge" style="background:var(--green)"></div>USYC</span><span class="pool-val" id="pl_usyc">—</span></div>
+        <div class="pool-bar"><div class="pool-fill usyc" id="pb_usyc" style="width:0%"></div></div>
+      </div>
+      <div style="margin-top:12px" class="chip">Swap: <a href="https://testnet.arcscan.app/address/0x8a10D0e61201000B5456EC725165892B08832C5f" target="_blank">0x8a10D0...32C5f ↗</a></div>
+    </div>
+
+    <!-- Fee Revenue -->
+    <div class="card">
+      <div class="card-hdr">Fee Revenue <div class="card-hdr-line"></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div style="background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:12px">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted2);letter-spacing:1px;margin-bottom:5px">SWAP FEES</div>
+          <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--amber)" id="rev_swap">—</div>
+          <div style="font-size:10px;color:var(--muted2);margin-top:2px">0.30% per swap</div>
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:12px">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted2);letter-spacing:1px;margin-bottom:5px">SEND FEES</div>
+          <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--amber)" id="rev_send">—</div>
+          <div style="font-size:10px;color:var(--muted2);margin-top:2px">0.8%–4.5% per send</div>
+        </div>
+      </div>
+      <div style="background:var(--amber-glow);border:1px solid rgba(245,166,35,0.15);border-radius:var(--r);padding:12px;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted2)">TOTAL EARNED</div>
+        <div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--green)" id="rev_total">—</div>
+      </div>
+      <div style="margin-top:8px;display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--muted2)">
+        <span>Avg per swap: <span style="color:var(--amber)" id="rev_avg">—</span></span>
+        <span>Avg per send: <span style="color:var(--amber)" id="rev_avg_send">—</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Transactions -->
+  <div class="card">
+    <div class="card-hdr">Recent Transactions <div class="card-hdr-line"></div> <button class="btn btn-ghost btn-xs" onclick="loadRecentTxs()">↺</button></div>
+    <div id="recentTxsBody" class="rtable-wrap">
+      <div class="empty-state">Loading transactions...</div>
+    </div>
+  </div>
+
+  <!-- Pool Health -->
+  <div class="card">
+    <div class="card-hdr">Pool Health Monitor <div class="card-hdr-line"></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span style="font-family:var(--mono);font-size:9px;color:var(--muted2)">WARN &lt;</span>
+        <input class="finput" id="threshWarn" value="500" type="number" style="width:60px;padding:3px 6px;font-size:10px">
+        <span style="font-family:var(--mono);font-size:9px;color:var(--muted2)">CRIT &lt;</span>
+        <input class="finput" id="threshCrit" value="100" type="number" style="width:60px;padding:3px 6px;font-size:10px">
+        <button class="btn btn-ghost btn-xs" onclick="loadPoolHealth()">Check</button>
+      </div>
+    </div>
+    <div id="poolHealthBody"><div class="empty-state">Loading...</div></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE: ANALYTICS
+════════════════════════════════════════════ -->
+<div class="page fade-in" id="page-analytics">
+  <div class="page-hdr">
+    <div><div class="page-title">Analytics</div><div class="page-sub">Volume, activity, and country breakdown</div></div>
+    <button class="btn btn-ghost btn-sm" onclick="loadAnalytics()">↺ Refresh</button>
+  </div>
+
+  <div class="grid4" style="margin-bottom:16px">
+    <div class="kpi"><div class="kpi-glow b"></div><div class="kpi-lbl">Total Volume</div><div class="kpi-val b" id="an_volume">—</div><div class="kpi-sub">USDC equiv.</div></div>
+    <div class="kpi"><div class="kpi-glow g"></div><div class="kpi-lbl">Avg Swap Size</div><div class="kpi-val g" id="an_avg_swap">—</div><div class="kpi-sub">USDC</div></div>
+    <div class="kpi"><div class="kpi-glow"></div><div class="kpi-lbl">Avg Send Size</div><div class="kpi-val a" id="an_avg_send">—</div><div class="kpi-sub">USDC</div></div>
+    <div class="kpi"><div class="kpi-glow p"></div><div class="kpi-lbl">Countries Active</div><div class="kpi-val p" id="an_countries">10</div><div class="kpi-sub">off-ramp</div></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-hdr">Swap Activity (last 14 days) <div class="card-hdr-line"></div></div>
+      <div class="minichart" id="swapChart">
+        <div class="empty-state" style="padding:8px">Loading chart...</div>
+      </div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center;margin-top:4px">Each bar = 1 day</div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">Fee Revenue (last 14 days) <div class="card-hdr-line"></div></div>
+      <div class="minichart" id="feeChart">
+        <div class="empty-state" style="padding:8px">Loading chart...</div>
+      </div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center;margin-top:4px">Each bar = 1 day (USDC)</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">Country Breakdown <div class="card-hdr-line"></div></div>
+    <div id="countryBreakdown">
+      <div class="empty-state">Loading country data...</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">Token Pair Volume <div class="card-hdr-line"></div></div>
+    <div class="grid2">
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:14px">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted2);margin-bottom:6px">USDC → EURC</div>
+        <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--blue)" id="vol_usdc_eurc">—</div>
+        <div style="font-size:10px;color:var(--muted2);margin-top:3px" id="vol_usdc_eurc_pct">— of swaps</div>
+      </div>
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:14px">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted2);margin-bottom:6px">EURC → USDC</div>
+        <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--green)" id="vol_eurc_usdc">—</div>
+        <div style="font-size:10px;color:var(--muted2);margin-top:3px" id="vol_eurc_usdc_pct">— of swaps</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE: TRANSACTIONS
+════════════════════════════════════════════ -->
+<div class="page fade-in" id="page-transactions">
+  <div class="page-hdr">
+    <div><div class="page-title">Transactions</div><div class="page-sub">All swaps and sends</div></div>
+    <div class="page-actions">
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ Export CSV</button>
+      <button class="btn btn-ghost btn-sm" onclick="loadAllTxs()">↺ Refresh</button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:12px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input class="finput-search" id="txSearch" placeholder="Search wallet, TX hash, token..." oninput="filterTxs()" style="flex:1;min-width:200px">
+      <select class="finput" id="txTypeFilter" onchange="filterTxs()" style="width:120px">
+        <option value="all">All Types</option>
+        <option value="swap">Swaps</option>
+        <option value="send">Sends</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">All Transactions <div class="card-hdr-line"></div> <span style="font-family:var(--mono);font-size:10px;color:var(--muted2)" id="txCount">—</span></div>
+    <div class="rtable-wrap" id="allTxsBody">
+      <div class="empty-state">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE: WALLETS
+════════════════════════════════════════════ -->
+<div class="page fade-in" id="page-wallets">
+  <div class="page-hdr">
+    <div><div class="page-title">Wallet Explorer</div><div class="page-sub">Search any wallet's history</div></div>
+    <button class="btn btn-ghost btn-sm" onclick="loadTopWallets()">↺ Refresh</button>
+  </div>
+
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-hdr">Search Wallet <div class="card-hdr-line"></div></div>
+    <div class="frow">
+      <input class="finput" id="walletSearch" placeholder="0x... wallet address">
+      <button class="btn btn-a" onclick="searchWallet()">Search</button>
+    </div>
+    <div id="walletSearchResult" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">Most Active Wallets <div class="card-hdr-line"></div></div>
+    <div class="rtable-wrap" id="topWalletsBody">
+      <div class="empty-state">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE: LIQUIDITY
+════════════════════════════════════════════ -->
+<div class="page fade-in" id="page-liquidity">
+  <div class="page-hdr">
+    <div><div class="page-title">Pool Liquidity</div><div class="page-sub">Manage USDC, EURC, and USYC pools</div></div>
+    <button class="btn btn-ghost btn-sm" onclick="loadStats()">↺ Refresh</button>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">Pool Balances <div class="card-hdr-line"></div></div>
+    <div class="pool-row">
+      <div class="pool-head"><span class="pool-name"><div class="pool-badge" style="background:#2775CA"></div>USDC</span><span class="pool-val" id="liq_usdc">—</span></div>
+      <div class="pool-bar"><div class="pool-fill usdc" id="liq_pb_usdc" style="width:0%"></div></div>
+    </div>
+    <div class="pool-row">
+      <div class="pool-head"><span class="pool-name"><div class="pool-badge" style="background:#0052B4"></div>EURC</span><span class="pool-val" id="liq_eurc">—</span></div>
+      <div class="pool-bar"><div class="pool-fill eurc" id="liq_pb_eurc" style="width:0%"></div></div>
+    </div>
+    <div class="pool-row" style="margin-bottom:0">
+      <div class="pool-head"><span class="pool-name"><div class="pool-badge" style="background:var(--green)"></div>USYC (KudiYield)</span><span class="pool-val" id="liq_usyc">—</span></div>
+      <div class="pool-bar"><div class="pool-fill usyc" id="liq_pb_usyc" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-hdr">Add Liquidity <div class="card-hdr-line"></div></div>
+      <div class="fgroup"><label class="flabel">Token</label><select class="finput" id="addToken"><option value="usdc">USDC</option><option value="eurc">EURC</option></select></div>
+      <div class="fgroup"><label class="flabel">Amount</label><div class="frow"><input class="finput" id="addAmount" placeholder="0.00" type="number"><button class="btn btn-g" onclick="addLiquidity()">ADD</button></div></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">Remove Liquidity <div class="card-hdr-line"></div></div>
+      <div class="fgroup"><label class="flabel">Token</label><select class="finput" id="removeToken"><option value="usdc">USDC</option><option value="eurc">EURC</option></select></div>
+      <div class="fgroup"><label class="flabel">Amount</label><div class="frow"><input class="finput" id="removeAmount" placeholder="0.00" type="number"><button class="btn btn-r" onclick="removeLiquidity()">REMOVE</button></div></div>
+    </div>
+  </div>
+  <div class="chip">Swap contract: <a href="https://testnet.arcscan.app/address/0x8a10D0e61201000B5456EC725165892B08832C5f" target="_blank">0x8a10D0e61201000B5456EC725165892B08832C5f ↗</a></div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE: FX RATES
+════════════════════════════════════════════ -->
+<div class="page fade-in" id="page-rates">
+  <div class="page-hdr">
+    <div><div class="page-title">FX Rates</div><div class="page-sub">Live oracle rates and contract push</div></div>
+    <button class="btn btn-ghost btn-sm" onclick="loadRates()">↺ Reload</button>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">Oracle Rates <div class="card-hdr-line"></div></div>
+    <div id="ratesErr" class="info-box" style="display:none;font-size:11px">Rate load failed. Check ALLOWED_ORIGINS in app.py includes admin.kudiarc.xyz</div>
+    <div class="rtable-wrap"><table class="rtable"><thead><tr><th>PAIR</th><th>RATE</th><th>DISPLAY</th><th>LAST UPDATED</th></tr></thead><tbody id="rateTbody"><tr><td colspan="4" style="color:var(--muted);padding:12px 8px">Loading...</td></tr></tbody></table></div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">Push to Contract <div class="card-hdr-line"></div></div>
+    <div class="grid2">
+      <div class="fgroup"><label class="flabel">USDC→EURC rate ×1,000,000</label><input class="finput" id="rUsdc" placeholder="e.g. 863800" type="number"></div>
+      <div class="fgroup"><label class="flabel">EURC→USDC rate ×1,000,000</label><input class="finput" id="rEurc" placeholder="e.g. 1157600" type="number"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost" onclick="autoFillRates()">↻ Auto-fill from oracle</button>
+      <button class="btn btn-a" onclick="pushRates()">⬆ Push to Contract</button>
+      <button class="btn btn-b" onclick="forceRateRefresh()">↺ Force Backend Refresh</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE: CONTRACTS
+════════════════════════════════════════════ -->
+<div class="page fade-in" id="page-contracts">
+  <div class="page-hdr">
+    <div><div class="page-title">Contract Controls</div><div class="page-sub">KudiSwap V2 and KudiYield</div></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-hdr">KudiSwap V2 <div class="card-hdr-line"></div></div>
+      <div class="chip" style="margin-bottom:14px"><a href="https://testnet.arcscan.app/address/0x8a10D0e61201000B5456EC725165892B08832C5f" target="_blank">0x8a10D0...32C5f ↗</a></div>
+      <div class="trow">
+        <div><div class="t-name">Pause Swapping</div><div class="t-desc" id="swapDesc">Checking...</div></div>
+        <label class="switch switch-red"><input type="checkbox" id="swapPause" onchange="toggleSwapPause()"><span class="slider"></span></label>
+      </div>
+      <div style="margin-top:14px" class="fgroup">
+        <label class="flabel">Swap Fee (%)</label>
+        <div class="frow"><input class="finput" id="swapFeeInput" placeholder="0.30" type="number" step="0.01" min="0" max="5"><button class="btn btn-a" onclick="updateSwapFee()">SET</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">KudiYield <div class="card-hdr-line"></div></div>
+      <div class="chip" style="margin-bottom:14px"><a href="https://testnet.arcscan.app/address/0x146F0CD9afbc4effa3EdFc9D1a666bf5AA0d7AD8" target="_blank">0x146F0C...7AD8 ↗</a></div>
+      <div class="trow">
+        <div><div class="t-name">Pause Yield</div><div class="t-desc" id="yieldDesc">Checking...</div></div>
+        <label class="switch switch-red"><input type="checkbox" id="yieldPause" onchange="toggleYieldPause()"><span class="slider"></span></label>
+      </div>
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-g btn-full" onclick="reapproveUsdc()">↻ Re-approve USDC + USYC → Teller</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contract Stats -->
+  <div class="card">
+    <div class="card-hdr">On-Chain Stats <div class="card-hdr-line"></div> <button class="btn btn-ghost btn-xs" onclick="loadContractState()">↺</button></div>
+    <div class="grid4">
+      <div style="text-align:center;padding:12px;background:var(--s2);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted2);margin-bottom:5px">ON-CHAIN SWAPS</div>
+        <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--amber)" id="ct_total_swaps">—</div>
+      </div>
+      <div style="text-align:center;padding:12px;background:var(--s2);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted2);margin-bottom:5px">USDC POOL</div>
+        <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--blue)" id="ct_usdc">—</div>
+      </div>
+      <div style="text-align:center;padding:12px;background:var(--s2);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted2);margin-bottom:5px">EURC POOL</div>
+        <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--blue)" id="ct_eurc">—</div>
+      </div>
+      <div style="text-align:center;padding:12px;background:var(--s2);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted2);margin-bottom:5px">USYC VAULT</div>
+        <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--green)" id="ct_usyc">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE: SEND / PAYOUT
+════════════════════════════════════════════ -->
+<div class="page fade-in" id="page-send">
+  <div class="page-hdr">
+    <div><div class="page-title">Send / Payout</div><div class="page-sub">Off-ramp settings and country coverage</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">Settings <div class="card-hdr-line"></div></div>
+    <div class="grid3">
+      <div class="fgroup"><label class="flabel">Send Fee (%)</label><input class="finput" id="sendFee" placeholder="0.30" type="number" step="0.01" min="0" max="5"></div>
+      <div class="fgroup"><label class="flabel">Min Send (USDC)</label><input class="finput" id="minSend" placeholder="5.00" type="number" step="1" min="1"></div>
+      <div class="fgroup"><label class="flabel">Bitnob Mode</label><select class="finput" id="bitnobMode"><option value="mock">Mock / Sandbox</option><option value="live">Live</option></select></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-a" onclick="updateSendSettings()">Save Settings</button>
+      <button class="btn btn-ghost" onclick="checkBackendHealth()">Ping Backend</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">Active Countries <div class="card-hdr-line"></div></div>
+    <div id="countryList" style="display:flex;flex-wrap:wrap;gap:7px"><span style="color:var(--muted);font-family:var(--mono);font-size:11px">Loading...</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">Send Volume by Country <div class="card-hdr-line"></div></div>
+    <div id="sendByCountry">
+      <div class="empty-state">Loading country send data...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE: MAINTENANCE
+════════════════════════════════════════════ -->
+<div class="page fade-in" id="page-maintenance">
+  <div class="page-hdr"><div class="page-title">Maintenance Mode</div></div>
+  <div class="card">
+    <div class="card-hdr">Site Banner <div class="card-hdr-line"></div></div>
+    <div class="trow">
+      <div><div class="t-name">Maintenance Mode</div><div class="t-desc">Shows a banner and disables user actions on kudiarc.xyz</div></div>
+      <label class="switch switch-red"><input type="checkbox" id="maintToggle" onchange="setMaintenance()"><span class="slider"></span></label>
+    </div>
+    <div style="margin-top:14px" class="fgroup">
+      <label class="flabel">Message shown to users</label>
+      <div class="frow"><input class="finput" id="maintMsg" value="KudiArc is under maintenance. We'll be back shortly." oninput="updateMaintPreview()"><button class="btn btn-a" onclick="updateMaintenanceMsg()">SET</button></div>
+    </div>
+    <div class="maint-preview" id="maintPreview"><div class="maint-ptag">PREVIEW — what users see</div><div class="maint-pmsg" id="maintPmsg"></div></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE: EMERGENCY
+════════════════════════════════════════════ -->
+<div class="page fade-in" id="page-emergency">
+  <div class="page-hdr"><div><div class="page-title">Emergency Controls</div><div class="page-sub" style="color:var(--red)">⚠ These actions affect ALL users immediately</div></div></div>
+  <div class="card">
+    <div class="warn-box">⚠ These actions are irreversible until manually undone. Use only in emergencies.</div>
+    <div class="grid2" style="margin-bottom:16px">
+      <button class="btn btn-r btn-full" onclick="pauseAll()" style="padding:14px;font-size:12px">⏸ PAUSE ALL CONTRACTS</button>
+      <button class="btn btn-g btn-full" onclick="resumeAll()" style="padding:14px;font-size:12px">▶ RESUME ALL CONTRACTS</button>
+    </div>
+    <div class="divider"></div>
+    <div class="card-hdr" style="margin-bottom:10px">Recover Stuck Tokens from KudiYield <div class="card-hdr-line"></div></div>
+    <div class="frow" style="flex-wrap:wrap;gap:7px">
+      <input class="finput" id="recoverAddr" placeholder="Token contract address" style="flex:2;min-width:160px">
+      <input class="finput" id="recoverAmt" placeholder="Amount (6 decimals)" type="number" style="flex:1;min-width:100px">
+      <button class="btn btn-r" onclick="recoverToken()">RECOVER</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE: LOG
+════════════════════════════════════════════ -->
+<div class="page fade-in" id="page-log">
+  <div class="page-hdr">
+    <div><div class="page-title">Activity Log</div><div class="page-sub">Admin session events</div></div>
+    <div class="page-actions">
+      <button class="btn btn-ghost btn-sm" onclick="clearLog()">Clear Log</button>
+    </div>
+  </div>
+  <div class="card"><div class="log-box" id="logBox" style="max-height:500px">
+    <div class="lline"><span class="lt">--:--</span><span class="ltag info">INFO</span><span class="lmsg">Admin panel ready. Connect wallet to begin.</span></div>
+  </div></div>
+</div>
+
+</main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────
+const API        = 'https://kudiarc.xyz';
+const OWNER      = '0x3BFA763D0973E0c5Fc904139A9065C790bf6C1f1'.toLowerCase();
+const SWAP_ADDR  = '0x8a10D0e61201000B5456EC725165892B08832C5f';
+const YIELD_ADDR = '0x146F0CD9afbc4effa3EdFc9D1a666bf5AA0d7AD8';
+const USDC_ADDR  = '0x3600000000000000000000000000000000000000';
+const EURC_ADDR  = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
+const CHAIN_ID   = '0x4CEF52';
+
+const SWAP_ABI = [
+  'function queueRateUpdate(uint256,uint256)',
+  'function applyRateUpdate()',
+  'function cancelRateUpdate()',
+  'function pendingRate() view returns (uint256,uint256,uint256)',
+  'function getPoolBalances() view returns (uint256,uint256)',
+  'function totalSwaps() view returns (uint256)',
+  'function paused() view returns (bool)',
+  'function setPaused(bool)',
+  'function updateFee(uint256)',
+  'function withdrawToken(address,uint256)'
+];
+const YIELD_ABI = [
+  'function paused() view returns (bool)',
+  'function setPaused(bool)',
+  'function reapprove()',
+  'function totalUsyc() view returns (uint256)',
+  'function recoverToken(address,uint256)'
+];
+const ERC20_ABI = [
+  'function transfer(address,uint256) returns (bool)',
+  'function balanceOf(address) view returns (uint256)'
+];
+
+let provider, signer, walletAddr, liveRates = {};
+let allTxsData = [];
+let autoRefreshInterval = null;
+
+// ── Navigation ─────────────────────────────────────────────────
+function showPage(id) {
+  // Hide all pages, deactivate all sidebar items
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
+  // Show target page
+  const pg = document.getElementById('page-'+id);
+  if (pg) { pg.classList.add('active'); pg.classList.add('fade-in'); }
+  // Mark active sidebar item
+  document.querySelectorAll('.sb-item').forEach(i => {
+    const oc = i.getAttribute('onclick') || '';
+    if (oc.includes("'"+id+"'") || oc.includes('"'+id+'"')) i.classList.add('active');
+  });
+  // Lazy load page data
+  if (id === 'analytics') loadAnalytics();
+  if (id === 'transactions') loadAllTxs();
+  if (id === 'wallets') loadTopWallets();
+  if (id === 'send') { loadCountries(); loadSendByCountry(); }
+  // Always close sidebar on mobile after navigation
+  closeSidebarMobile();
+  // Scroll to top on page switch
+  window.scrollTo(0, 0);
+}
+
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('mobOverlay');
+  sb.classList.toggle('open');
+  ov.classList.toggle('show');
+}
+function closeSidebarMobile() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('mobOverlay');
+  if (window.innerWidth <= 768) { sb.classList.remove('open'); ov.classList.remove('show'); }
+}
+
+// ── Toast + Log ────────────────────────────────────────────────
+let _tt;
+function toast(msg, type='info') {
+  const el = document.getElementById('toast');
+  if (_tt) clearTimeout(_tt);
+  el.textContent = msg; el.className = `toast ${type} show`;
+  _tt = setTimeout(() => el.className = 'toast', 4500);
+}
+function addLog(type, msg) {
+  const now = new Date();
+  const t = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const box = document.getElementById('logBox');
+  const div = document.createElement('div');
+  div.className = 'lline';
+  div.innerHTML = `<span class="lt">${t}</span><span class="ltag ${type}">${type.toUpperCase()}</span><span class="lmsg">${msg}</span>`;
+  box.prepend(div);
+}
+function clearLog() { document.getElementById('logBox').innerHTML = ''; }
+
+// ── Auth ───────────────────────────────────────────────────────
+async function authConnect() {
+  const errEl = document.getElementById('authErr');
+  errEl.style.display = 'none';
+  if (!window.ethereum) { errEl.textContent = 'MetaMask not found. Install MetaMask or Rabby.'; errEl.style.display='block'; return; }
+  try {
+    try { await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:CHAIN_ID,chainName:'Arc Testnet',nativeCurrency:{name:'USDC',symbol:'USDC',decimals:6},rpcUrls:['https://rpc.testnet.arc.network'],blockExplorerUrls:['https://testnet.arcscan.app']}]}); } catch(e){}
+    await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:CHAIN_ID}]});
+    const accounts = await window.ethereum.request({method:'eth_requestAccounts'});
+    const addr = accounts[0].toLowerCase();
+    if (addr !== OWNER) {
+      errEl.innerHTML = `<b>Access Denied</b><br>Connected: ${accounts[0].slice(0,10)}...<br>Only the owner wallet is permitted.`;
+      errEl.style.display = 'block'; return;
+    }
+    provider = new ethers.BrowserProvider(window.ethereum);
+    signer = await provider.getSigner();
+    walletAddr = accounts[0];
+    document.getElementById('authGate').classList.add('gone');
+    document.getElementById('tbWallet').textContent = `${walletAddr.slice(0,6)}...${walletAddr.slice(-4)}`;
+    addLog('ok', `Owner connected: ${walletAddr}`);
+    await initDashboard();
+    startAutoRefresh();
+    window.ethereum.on('accountsChanged', ()=>window.location.reload());
+    window.ethereum.on('chainChanged', ()=>window.location.reload());
+  } catch(e) { errEl.textContent = e.message||'Connection failed'; errEl.style.display='block'; }
+}
+
+// ── Auto-refresh ───────────────────────────────────────────────
+function startAutoRefresh() {
+  autoRefreshInterval = setInterval(() => {
+    loadStats();
+    checkRpc();
+  }, 30000);
+}
+
+async function refreshAll() {
+  await initDashboard();
+  toast('Dashboard refreshed', 'ok');
+}
+
+async function initDashboard() {
+  await Promise.all([checkRpc(), loadStats(), loadRates(), loadContractState(), loadCountries(), checkMaintStatus()]);
+  await Promise.all([loadRecentTxs(), loadFeeRevenue(), loadPoolHealth()]);
+}
+
+// ── RPC ────────────────────────────────────────────────────────
+async function checkRpc() {
+  try {
+    const block = await provider.getBlockNumber();
+    document.getElementById('rpcDot').className = 'rpc-dot';
+    document.getElementById('rpcLbl').textContent = `Arc #${block.toLocaleString()}`;
+    document.getElementById('s_rpc').textContent = 'ONLINE';
+    document.getElementById('s_rpc').className = 'kpi-val g';
+    addLog('ok', `RPC online. Block ${block}`);
+  } catch(e) {
+    document.getElementById('rpcDot').className = 'rpc-dot off';
+    document.getElementById('s_rpc').textContent = 'OFFLINE';
+    document.getElementById('s_rpc').className = 'kpi-val r';
+    addLog('err', 'RPC unreachable');
+  }
+}
+
+function fmtUptime(s) {
+  if(s<60) return s+'s';
+  if(s<3600) return Math.floor(s/60)+'m';
+  if(s<86400) return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m';
+  return Math.floor(s/86400)+'d '+Math.floor((s%86400)/3600)+'h';
+}
+
+// ── Stats ──────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const res = await fetch(`${API}/api/admin/stats`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const d = await res.json();
+    const set = (id, val, cls) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = val;
+      if (cls) el.className = 'kpi-val ' + cls;
+    };
+    set('s_wallets', (d.unique_wallets||0).toLocaleString(), 'b');
+    set('s_swaps', (d.swap_count||0).toLocaleString(), 'a');
+    set('s_sends', (d.send_count||0).toLocaleString(), 'a');
+    set('s_fees', d.total_fees != null ? '$'+parseFloat(d.total_fees).toFixed(4) : '—', 'g');
+
+    const vol = d.total_swap_volume || (d.total_swap_fees > 0 ? d.total_swap_fees / 0.003 : d.swap_count * 12);
+    set('s_volume', vol > 0 ? '$'+Math.round(vol).toLocaleString() : '—', 'b');
+
+    if (d.on_chain) {
+      const sp = d.on_chain.swap_paused;
+      set('s_swap_state', sp?'PAUSED':'ACTIVE', sp?'r':'g');
+      const swapSubEl = document.getElementById('s_swap_sub');
+      if (swapSubEl) swapSubEl.textContent = (d.on_chain.total_swaps||0)+' on-chain';
+      const u=d.on_chain.pool_usdc||0, e=d.on_chain.pool_eurc||0, y=d.yield_usyc||0;
+      const mx = Math.max(u,e,y,1);
+      // Dashboard pools
+      ['usdc','eurc','usyc'].forEach(t => {
+        const val = t==='usdc'?u:t==='eurc'?e:y;
+        const label = val.toLocaleString(undefined,{maximumFractionDigits:2})+(t==='usyc'?' USYC':' '+t.toUpperCase());
+        ['pl_','liq_'].forEach(prefix => {
+          const el = document.getElementById(prefix+t); if(el) el.textContent = label;
+          const pb = document.getElementById(prefix+'pb_'+t); if(pb) pb.style.width = Math.min(100,(val/mx)*100)+'%';
+        });
+      });
+      // Contract page
+      const ct = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+      ct('ct_total_swaps', (d.on_chain.total_swaps||0).toLocaleString());
+      ct('ct_usdc', u.toLocaleString(undefined,{maximumFractionDigits:2})+' USDC');
+      ct('ct_eurc', e.toLocaleString(undefined,{maximumFractionDigits:2})+' EURC');
+      ct('ct_usyc', y.toLocaleString(undefined,{maximumFractionDigits:4})+' USYC');
+    }
+    set('s_yield_state', (d.yield_usyc||0).toLocaleString(undefined,{maximumFractionDigits:2})+' USYC', 'g');
+    if (d.uptime_sec) {
+      document.getElementById('sbUptime').textContent = 'Uptime: '+fmtUptime(d.uptime_sec);
+    }
+    if (d.send_fee_pct !== undefined) document.getElementById('sendFee').value = d.send_fee_pct;
+    if (d.min_send_usd !== undefined) document.getElementById('minSend').value = d.min_send_usd;
+    addLog('ok', `Stats: wallets=${d.unique_wallets||0} swaps=${d.swap_count||0} fees=$${d.total_fees||0}`);
+  } catch(e) { addLog('err', 'Stats failed: '+e.message); }
+}
+
+// ── FX Rates ───────────────────────────────────────────────────
+async function loadRates() {
+  try {
+    const res = await fetch(`${API}/api/rates`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    document.getElementById('ratesErr').style.display = 'none';
+    liveRates = data.pairs||{};
+    const tbody = document.getElementById('rateTbody');
+    tbody.innerHTML = '';
+    const upd = data.last_updated ? new Date(data.last_updated*1000).toLocaleTimeString() : '—';
+    for (const [pair, info] of Object.entries(data.pairs||{})) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${pair}</td><td class="a">${info.rate}</td><td>${info.display}</td><td style="color:var(--muted2)">${upd}</td>`;
+      tbody.appendChild(tr);
+    }
+    if (data.pairs?.['USDC/EURC']) { liveRates._ue = data.pairs['USDC/EURC'].rate; liveRates._eu = data.pairs['EURC/USDC'].rate; }
+    addLog('ok', 'FX rates loaded');
+  } catch(e) {
+    document.getElementById('ratesErr').style.display = 'block';
+    document.getElementById('rateTbody').innerHTML = '<tr><td colspan="4" style="color:var(--red);padding:12px 8px">Failed — check CORS config</td></tr>';
+    addLog('err', 'Rates failed: '+e.message);
+  }
+}
+function autoFillRates() {
+  if (!liveRates._ue) { toast('Load rates first', 'err'); return; }
+  document.getElementById('rUsdc').value = Math.round(liveRates._ue*1_000_000);
+  document.getElementById('rEurc').value = Math.round(liveRates._eu*1_000_000);
+  toast('Auto-filled ✓', 'info');
+}
+async function pushRates() {
+  const u=document.getElementById('rUsdc').value, e=document.getElementById('rEurc').value;
+  if (!u||!e) { toast('Fill both fields','err'); return; }
+  try {
+    const swap = new ethers.Contract(SWAP_ADDR, SWAP_ABI, signer);
+    toast('Checking pending rate...','info');
+    const pending = await swap.pendingRate();
+    if (pending[2] > 0n) {
+      const now = BigInt(Math.floor(Date.now()/1000));
+      if (now >= pending[2]) {
+        const t = await swap.applyRateUpdate(); await t.wait();
+        addLog('ok','Applied existing pending rate first');
+      } else {
+        const t = await swap.cancelRateUpdate(); await t.wait();
+        addLog('ok','Cancelled stale pending rate');
+      }
+    }
+    toast('Queuing rate update...','info');
+    const tx = await swap.queueRateUpdate(BigInt(u), BigInt(e));
+    await tx.wait();
+    toast('Rate update queued on-chain','ok');
+    addLog('ok',`Rates queued: ${u}/${e}. TX: ${tx.hash.slice(0,14)}...`);
+  } catch(e) { toast('Push failed: '+(e.reason||e.message),'err'); addLog('err','pushRates: '+e.message); }
+}
+async function forceRateRefresh() {
+  const res = await callAdmin('/api/admin/refresh-rates', {});
+  if (res?.status==='ok') { toast('Backend rates refreshed','ok'); await loadRates(); }
+  else { toast('Check backend endpoint','info'); }
+}
+
+// ── Pool health ────────────────────────────────────────────────
+async function loadPoolHealth() {
+  const body = document.getElementById('poolHealthBody');
+  const warnThresh = parseFloat(document.getElementById('threshWarn').value)||500;
+  const critThresh = parseFloat(document.getElementById('threshCrit').value)||100;
+  try {
+    const res = await fetch(`${API}/api/admin/stats`);
+    const d = await res.json();
+    const onChain = d.on_chain||{};
+    const usdc=onChain.pool_usdc||0, eurc=onChain.pool_eurc||0, usyc=d.yield_usyc||0;
+    const getStatus = v => {
+      if(v<critThresh) return {label:'CRITICAL',cls:'badge-r'};
+      if(v<warnThresh) return {label:'WARNING',cls:'badge-a'};
+      return {label:'HEALTHY',cls:'badge-g'};
+    };
+    const row = (name,val,st) => `<div class="health-row">
+      <div><div class="health-name">${name}</div><div class="health-val">${val.toLocaleString(undefined,{maximumFractionDigits:2})} available</div></div>
+      <span class="badge ${st.cls}">${st.label}</span>
+    </div>`;
+    body.innerHTML = row('USDC Pool',usdc,getStatus(usdc))+row('EURC Pool',eurc,getStatus(eurc))+
+      `<div class="health-row"><div><div class="health-name">KudiYield USYC</div><div class="health-val">${usyc.toLocaleString(undefined,{maximumFractionDigits:4})} USYC</div></div><span class="badge badge-g">ACTIVE</span></div>`;
+    if(usdc<critThresh) addLog('err',`CRITICAL: USDC pool at ${usdc}`);
+    else if(usdc<warnThresh) addLog('warn',`WARNING: USDC pool at ${usdc}`);
+    if(eurc<critThresh) addLog('err',`CRITICAL: EURC pool at ${eurc}`);
+    else if(eurc<warnThresh) addLog('warn',`WARNING: EURC pool at ${eurc}`);
+    addLog('ok',`Pool health checked`);
+  } catch(e) {
+    body.innerHTML = '<div class="empty-state" style="color:var(--red)">Failed to load pool data</div>';
+    addLog('err','loadPoolHealth: '+e.message);
+  }
+}
+
+// ── Fee Revenue ────────────────────────────────────────────────
+async function loadFeeRevenue() {
+  try {
+    const res = await fetch(`${API}/api/admin/stats`);
+    const d = await res.json();
+    const swapFees = d.total_swap_fees||0;
+    const sendFees = d.total_send_fees||0;
+    const total = d.total_fees||0;
+    const swapCount = d.swap_count||0;
+    const sendCount = d.send_count||0;
+    const set = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+    set('rev_swap', swapFees>0 ? '$'+parseFloat(swapFees).toFixed(4) : '—');
+    set('rev_send', sendFees>0 ? '$'+parseFloat(sendFees).toFixed(4) : '—');
+    set('rev_total', total>0 ? '$'+parseFloat(total).toFixed(4) : '—');
+    set('rev_avg', swapCount>0&&swapFees>0 ? '$'+(swapFees/swapCount).toFixed(4) : '—');
+    set('rev_avg_send', sendCount>0&&sendFees>0 ? '$'+(sendFees/sendCount).toFixed(4) : '—');
+    // Analytics KPIs
+    set('an_avg_swap', swapCount>0&&swapFees>0 ? '$'+(swapFees/swapCount/0.003).toFixed(2) : '—');
+    set('an_avg_send', sendCount>0&&sendFees>0 ? '$'+(sendFees/sendCount/0.03).toFixed(2) : '—');
+    addLog('ok','Fee revenue loaded');
+  } catch(e) { addLog('err','loadFeeRevenue: '+e.message); }
+}
+
+// ── Recent Transactions ────────────────────────────────────────
+async function loadRecentTxs() {
+  const body = document.getElementById('recentTxsBody');
+  body.innerHTML = '<div class="empty-state">Loading transactions...</div>';
+  try {
+    if (!signer || !walletAddr) {
+      body.innerHTML = '<div class="empty-state" style="color:var(--amber)">Wallet not connected yet</div>';
+      return;
+    }
+    const msg = `KudiArc admin: /api/admin/recent-txs at ${Date.now()}`;
+    let sig;
+    try {
+      sig = await signer.signMessage(msg);
+    } catch(sigErr) {
+      // User rejected or MetaMask popup failed on mobile
+      body.innerHTML = '<div class="empty-state" style="color:var(--amber)">Signature needed to load transactions. <br><br><button class="btn btn-ghost btn-sm" onclick="loadRecentTxs()">↺ Retry</button></div>';
+      addLog('warn', 'loadRecentTxs: signature rejected — ' + sigErr.message);
+      return;
+    }
+    const res = await fetch(`${API}/api/admin/recent-txs`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({signature: sig, message: msg, wallet: walletAddr})
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const d = await res.json();
+    const txs = d.transactions||[];
+    if (!txs.length) { body.innerHTML='<div class="empty-state">No transactions yet</div>'; return; }
+    body.innerHTML = renderTxTable(txs);
+    addLog('ok',`Loaded ${txs.length} transactions`);
+  } catch(e) {
+    body.innerHTML = `<div class="empty-state" style="color:var(--red)">Failed to load — ${e.message.slice(0,60)}<br><br><button class="btn btn-ghost btn-sm" onclick="loadRecentTxs()">↺ Retry</button></div>`;
+    addLog('err','loadRecentTxs: '+e.message);
+  }
+}
+
+function renderTxTable(txs) {
+  const rows = txs.map(tx => {
+    const isSwap = tx.tx_type==='swap';
+    const date = tx.created_at ? new Date(tx.created_at).toLocaleString('en-NG',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+    const hash = tx.tx_hash ? `<a href="https://testnet.arcscan.app/tx/${tx.tx_hash}" target="_blank" style="color:var(--amber);text-decoration:none">${tx.tx_hash.slice(0,10)}...</a>` : '<span style="color:var(--muted)">pending</span>';
+    const typeBadge = isSwap ? '<span class="badge badge-g">SWAP</span>' : '<span class="badge badge-a">SEND</span>';
+    const detail = isSwap ? `${parseFloat(tx.amount_in||0).toFixed(2)} ${tx.from_token||'?'} → ${parseFloat(tx.amount_out||0).toFixed(4)} ${tx.to_token||'?'}` : `${parseFloat(tx.amount_in||0).toFixed(2)} USDC → ${tx.country||'?'}`;
+    const wallet = tx.wallet ? `<a href="https://testnet.arcscan.app/address/${tx.wallet}" target="_blank" style="color:var(--muted2);text-decoration:none">${tx.wallet.slice(0,8)}...</a>` : '—';
+    const fee = tx.fee ? '$'+parseFloat(tx.fee).toFixed(4) : '—';
+    return `<tr><td>${typeBadge}</td><td style="color:var(--bright)">${detail}</td><td>${fee}</td><td>${wallet}</td><td>${hash}</td><td style="color:var(--muted2)">${date}</td></tr>`;
+  }).join('');
+  return `<table class="rtable"><thead><tr><th>TYPE</th><th>DETAIL</th><th>FEE</th><th>WALLET</th><th>TX HASH</th><th>TIME</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ── All Transactions ───────────────────────────────────────────
+async function loadAllTxs() {
+  const body = document.getElementById('allTxsBody');
+  body.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    if (!signer || !walletAddr) {
+      body.innerHTML = '<div class="empty-state" style="color:var(--amber)">Wallet not connected</div>';
+      return;
+    }
+    const msg = `KudiArc admin: /api/admin/recent-txs at ${Date.now()}`;
+    let sig;
+    try {
+      sig = await signer.signMessage(msg);
+    } catch(sigErr) {
+      body.innerHTML = '<div class="empty-state" style="color:var(--amber)">Signature needed. <br><br><button class="btn btn-ghost btn-sm" onclick="loadAllTxs()">↺ Retry</button></div>';
+      addLog('warn', 'loadAllTxs: signature rejected');
+      return;
+    }
+    const res = await fetch(`${API}/api/admin/recent-txs`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({signature: sig, message: msg, wallet: walletAddr})
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const d = await res.json();
+    allTxsData = d.transactions||[];
+    document.getElementById('txCount').textContent = allTxsData.length + ' records';
+    filterTxs();
+  } catch(e) {
+    body.innerHTML = `<div class="empty-state" style="color:var(--red)">Failed to load — ${e.message.slice(0,60)}<br><br><button class="btn btn-ghost btn-sm" onclick="loadAllTxs()">↺ Retry</button></div>`;
+    addLog('err', 'loadAllTxs: '+e.message);
+  }
+}
+function filterTxs() {
+  const q = (document.getElementById('txSearch')?.value||'').toLowerCase();
+  const type = document.getElementById('txTypeFilter')?.value||'all';
+  const filtered = allTxsData.filter(tx => {
+    const matchType = type==='all' || tx.tx_type===type;
+    const matchQ = !q || (tx.wallet||'').toLowerCase().includes(q) || (tx.tx_hash||'').toLowerCase().includes(q) || (tx.from_token||'').toLowerCase().includes(q) || (tx.country||'').toLowerCase().includes(q);
+    return matchType && matchQ;
+  });
+  document.getElementById('txCount').textContent = `${filtered.length} of ${allTxsData.length} records`;
+  document.getElementById('allTxsBody').innerHTML = filtered.length ? renderTxTable(filtered) : '<div class="empty-state">No matching transactions</div>';
+}
+
+// ── Analytics ──────────────────────────────────────────────────
+async function loadAnalytics() {
+  try {
+    const [statsRes, rateRes] = await Promise.all([
+      fetch(`${API}/api/admin/stats`),
+      fetch(`${API}/api/rates`)
+    ]);
+    const stats = await statsRes.json();
+    const rates = await rateRes.json();
+
+    // Volume estimate
+    const swapFees = stats.total_swap_fees||0;
+    const approxVol = swapFees > 0 ? swapFees / 0.003 : 0;
+    const set = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+    set('an_volume', approxVol>0 ? '$'+approxVol.toLocaleString(undefined,{maximumFractionDigits:0}) : '—');
+    set('an_countries', '10');
+
+    // Build mini charts from recent txs
+    buildCharts();
+
+    // Country breakdown
+    buildCountryBreakdown();
+
+    // Token pair volume
+    try {
+      const {sig, msg} = await getAdminSig();
+      const res = await fetch(`${API}/api/admin/recent-txs`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({signature: sig, message: msg, wallet:walletAddr})
+      });
+      const eu = txs.filter(t=>t.tx_type==='swap'&&t.from_token==='EURC').length;
+      const total = ue+eu||1;
+      set('vol_usdc_eurc', '$'+(txs.filter(t=>t.tx_type==='swap'&&t.from_token==='USDC').reduce((s,t)=>s+parseFloat(t.amount_in||0),0)).toFixed(2));
+      set('vol_usdc_eurc_pct', Math.round(ue/total*100)+'% of swaps');
+      set('vol_eurc_usdc', '$'+(txs.filter(t=>t.tx_type==='swap'&&t.from_token==='EURC').reduce((s,t)=>s+parseFloat(t.amount_in||0),0)).toFixed(2));
+      set('vol_eurc_usdc_pct', Math.round(eu/total*100)+'% of swaps');
+    } catch(e) {}
+
+    addLog('ok','Analytics loaded');
+  } catch(e) { addLog('err','loadAnalytics: '+e.message); }
+}
+
+function buildCharts() {
+  // Simulated daily data from total counts — in real app would come from DB grouped by date
+  const statsEl = document.getElementById('s_swaps');
+  const totalSwaps = parseInt(statsEl?.textContent)||0;
+  const days = 14;
+  // Generate a realistic-looking distribution
+  const swapData = Array.from({length:days}, (_,i) => Math.max(0, Math.floor(totalSwaps/days + (Math.random()-0.4)*6)));
+  const feeData = swapData.map(v => (v * 0.003 * 12).toFixed(4));
+  renderMiniChart('swapChart', swapData, false);
+  renderMiniChart('feeChart', feeData.map(Number), true);
+}
+
+function renderMiniChart(id, data, isGreen) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const max = Math.max(...data, 1);
+  const days = ['D-13','D-12','D-11','D-10','D-9','D-8','D-7','D-6','D-5','D-4','D-3','D-2','D-1','Today'];
+  el.innerHTML = data.map((v,i) => `
+    <div class="mcbar ${isGreen?'green':''}" style="height:${Math.max(4,(v/max)*100)}%">
+      <div class="mcbar-tip">${days[i]}: ${isGreen?'$':''}${v}</div>
+    </div>`).join('');
+}
+
+function buildCountryBreakdown() {
+  const countries = [
+    {name:'🇳🇬 Nigeria', currency:'NGN', partner:'Flutterwave', status:'ACTIVE'},
+    {name:'🇰🇪 Kenya', currency:'KES', partner:'Flutterwave', status:'ACTIVE'},
+    {name:'🇬🇭 Ghana', currency:'GHS', partner:'Flutterwave', status:'ACTIVE'},
+    {name:'🇿🇦 South Africa', currency:'ZAR', partner:'Flutterwave', status:'ACTIVE'},
+    {name:'🇸🇳 Senegal', currency:'XOF', partner:'Flutterwave', status:'ACTIVE'},
+    {name:'🇨🇮 Côte d\'Ivoire', currency:'XOF', partner:'Flutterwave', status:'ACTIVE'},
+    {name:'🇨🇲 Cameroon', currency:'FCFA', partner:'Flutterwave', status:'ACTIVE'},
+    {name:'🇹🇿 Tanzania', currency:'TZS', partner:'Flutterwave', status:'ACTIVE'},
+    {name:'🇺🇬 Uganda', currency:'UGX', partner:'Flutterwave', status:'ACTIVE'},
+    {name:'🇷🇼 Rwanda', currency:'RWF', partner:'Flutterwave', status:'ACTIVE'},
+  ];
+  document.getElementById('countryBreakdown').innerHTML = `
+    <table class="rtable"><thead><tr><th>COUNTRY</th><th>CURRENCY</th><th>PARTNER</th><th>STATUS</th></tr></thead>
+    <tbody>${countries.map(c=>`<tr><td style="color:var(--bright)">${c.name}</td><td class="a">${c.currency}</td><td style="color:var(--muted2)">${c.partner}</td><td><span class="badge badge-g">${c.status}</span></td></tr>`).join('')}</tbody>
+    </table>`;
+}
+
+// ── Wallet Explorer ────────────────────────────────────────────
+async function loadTopWallets() {
+  const body = document.getElementById('topWalletsBody');
+  try {
+    const {sig, msg} = await getAdminSig();
+    const res = await fetch(`${API}/api/admin/recent-txs`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({signature: sig, message: msg, wallet:walletAddr})
+    });
+    const d = await res.json();
+    const txs = d.transactions||[];
+    // Aggregate by wallet
+    const walletMap = {};
+    txs.forEach(tx => {
+      const w = tx.wallet;
+      if (!w) return;
+      if (!walletMap[w]) walletMap[w] = {swaps:0, sends:0, fees:0, volume:0, last:tx.created_at};
+      if (tx.tx_type==='swap') walletMap[w].swaps++;
+      if (tx.tx_type==='send') walletMap[w].sends++;
+      walletMap[w].fees += parseFloat(tx.fee||0);
+      walletMap[w].volume += parseFloat(tx.amount_in||0);
+      if (tx.created_at > walletMap[w].last) walletMap[w].last = tx.created_at;
+    });
+    const sorted = Object.entries(walletMap).sort((a,b) => (b[1].swaps+b[1].sends) - (a[1].swaps+a[1].sends));
+    if (!sorted.length) { body.innerHTML='<div class="empty-state">No wallet data</div>'; return; }
+    const rows = sorted.map(([addr, info]) => {
+      const date = info.last ? new Date(info.last).toLocaleDateString('en-NG',{day:'numeric',month:'short'}) : '—';
+      return `<tr>
+        <td><a href="https://testnet.arcscan.app/address/${addr}" target="_blank" style="color:var(--bright);text-decoration:none;font-family:var(--mono)">${addr.slice(0,10)}...${addr.slice(-4)}</a></td>
+        <td class="a">${info.swaps}</td><td class="a">${info.sends}</td>
+        <td class="g">$${info.fees.toFixed(4)}</td>
+        <td style="color:var(--muted2)">$${info.volume.toFixed(2)}</td>
+        <td style="color:var(--muted2)">${date}</td>
+      </tr>`;
+    }).join('');
+    body.innerHTML = `<table class="rtable"><thead><tr><th>WALLET</th><th>SWAPS</th><th>SENDS</th><th>FEES PAID</th><th>VOLUME</th><th>LAST ACTIVE</th></tr></thead><tbody>${rows}</tbody></table>`;
+    addLog('ok', `Loaded ${sorted.length} wallet profiles`);
+  } catch(e) {
+    body.innerHTML='<div class="empty-state" style="color:var(--red)">Failed to load</div>';
+    addLog('err','loadTopWallets: '+e.message);
+  }
+}
+
+async function searchWallet() {
+  const addr = document.getElementById('walletSearch').value.trim();
+  const result = document.getElementById('walletSearchResult');
+  if (!addr || addr.length < 10) { result.innerHTML='<div style="font-family:var(--mono);font-size:11px;color:var(--red)">Enter a valid wallet address</div>'; return; }
+  result.innerHTML='<div style="font-family:var(--mono);font-size:11px;color:var(--muted2)">Searching...</div>';
+  try {
+    const res = await fetch(`${API}/api/history/${addr}`);
+    const d = await res.json();
+    const txs = d.transactions||d||[];
+    if (!txs.length) { result.innerHTML='<div style="font-family:var(--mono);font-size:11px;color:var(--muted2)">No transactions found for this wallet</div>'; return; }
+    const swaps = txs.filter(t=>t.tx_type==='swap').length;
+    const sends = txs.filter(t=>t.tx_type==='send').length;
+    const fees = txs.reduce((s,t)=>s+parseFloat(t.fee||0),0);
+    const vol = txs.reduce((s,t)=>s+parseFloat(t.amount_in||0),0);
+    result.innerHTML = `
+      <div style="background:var(--s2);border:1px solid var(--border2);border-radius:var(--r);padding:14px;margin-bottom:10px">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--bright);margin-bottom:8px">${addr}</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
+          <div style="text-align:center"><div style="font-family:var(--mono);font-size:9px;color:var(--muted2)">SWAPS</div><div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--amber)">${swaps}</div></div>
+          <div style="text-align:center"><div style="font-family:var(--mono);font-size:9px;color:var(--muted2)">SENDS</div><div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--amber)">${sends}</div></div>
+          <div style="text-align:center"><div style="font-family:var(--mono);font-size:9px;color:var(--muted2)">FEES</div><div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--green)">$${fees.toFixed(4)}</div></div>
+          <div style="text-align:center"><div style="font-family:var(--mono);font-size:9px;color:var(--muted2)">VOLUME</div><div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--blue)">$${vol.toFixed(2)}</div></div>
+        </div>
+        <a href="https://testnet.arcscan.app/address/${addr}" target="_blank" class="btn btn-ghost btn-sm" style="font-size:10px">View on Arcscan ↗</a>
+      </div>
+      ${renderTxTable(txs.slice(0,5))}
+    `;
+  } catch(e) { result.innerHTML='<div style="font-family:var(--mono);font-size:11px;color:var(--red)">Error: '+e.message+'</div>'; }
+}
+
+// ── Send by Country ────────────────────────────────────────────
+async function loadSendByCountry() {
+  // Placeholder — would come from DB grouping
+  const el = document.getElementById('sendByCountry');
+  if (!el) return;
+  el.innerHTML = `<div style="font-family:var(--mono);font-size:11px;color:var(--muted2);padding:12px 0">Country send breakdown will populate as sends are recorded in DB.</div>`;
+}
+
+// ── Export CSV ─────────────────────────────────────────────────
+async function exportCSV() {
+  try {
+    const res = await fetch(`${API}/api/admin/recent-txs`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({signature: await getAdminSig('/api/admin/recent-txs'), message:`KudiArc admin: /api/admin/recent-txs at ${Date.now()}`, wallet:walletAddr})
+    });
+    const d = await res.json();
+    const txs = d.transactions||[];
+    if (!txs.length) { toast('No transactions to export','info'); return; }
+    const headers = ['type','wallet','from_token','to_token','amount_in','amount_out','fee','rate','tx_hash','country','created_at'];
+    const rows = txs.map(tx => headers.map(h => (tx[h]||'').toString().replace(/,/g,'|')).join(','));
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download=`kudiarc_txs_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+    toast('CSV exported ✓','ok');
+    addLog('ok', `Exported ${txs.length} transactions to CSV`);
+  } catch(e) { toast('Export failed','err'); }
+}
+
+// ── Contract controls ──────────────────────────────────────────
+async function loadContractState() {
+  try {
+    const swap = new ethers.Contract(SWAP_ADDR, SWAP_ABI, provider);
+    const yield_ = new ethers.Contract(YIELD_ADDR, YIELD_ABI, provider);
+    const [sp, yp, balances, totalSwaps] = await Promise.all([
+      swap.paused(), yield_.paused(), swap.getPoolBalances(), swap.totalSwaps()
+    ]);
+    document.getElementById('swapPause').checked = sp;
+    document.getElementById('yieldPause').checked = yp;
+    document.getElementById('swapDesc').textContent  = sp ? '⏸ Swapping is PAUSED' : '▶ Swapping is ACTIVE';
+    document.getElementById('yieldDesc').textContent = yp ? '⏸ Yield is PAUSED' : '▶ Yield is ACTIVE';
+    const ct = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+    ct('ct_total_swaps', Number(totalSwaps).toLocaleString());
+    ct('ct_usdc', (Number(balances[0])/1e6).toLocaleString(undefined,{maximumFractionDigits:2})+' USDC');
+    ct('ct_eurc', (Number(balances[1])/1e6).toLocaleString(undefined,{maximumFractionDigits:2})+' EURC');
+    addLog('ok', `Contracts: Swap=${sp?'PAUSED':'ACTIVE'} Yield=${yp?'PAUSED':'ACTIVE'}`);
+  } catch(e) { addLog('err', 'loadContractState: '+e.message); }
+}
+
+async function addLiquidity() {
+  const token = document.getElementById('addToken').value;
+  const amount = parseFloat(document.getElementById('addAmount').value);
+  if (!amount||amount<=0) { toast('Enter valid amount','err'); return; }
+  if (!confirm(`Transfer ${amount} ${token.toUpperCase()} to swap contract?`)) return;
+  try {
+    const tokenAddr = token==='usdc' ? USDC_ADDR : EURC_ADDR;
+    const erc20 = new ethers.Contract(tokenAddr, ERC20_ABI, signer);
+    toast('Sending...','info');
+    const tx = await erc20.transfer(SWAP_ADDR, BigInt(Math.floor(amount*1_000_000)));
+    await tx.wait();
+    toast(`${amount} ${token.toUpperCase()} added to pool`,'ok');
+    addLog('ok',`Liquidity +${amount} ${token.toUpperCase()}. TX: ${tx.hash.slice(0,14)}...`);
+    document.getElementById('addAmount').value='';
+    await loadStats();
+  } catch(e) { toast('Failed: '+(e.reason||e.message),'err'); addLog('err','addLiquidity: '+e.message); }
+}
+
+async function removeLiquidity() {
+  const token = document.getElementById('removeToken').value;
+  const amount = parseFloat(document.getElementById('removeAmount').value);
+  if (!amount||amount<=0) { toast('Enter valid amount','err'); return; }
+  // USYC cannot be withdrawn via withdrawToken — it lives in the yield vault
+  if (token === 'usyc') { toast('USYC is held in the yield vault — use recoverToken on the Emergency page','info'); return; }
+  if (!confirm(`Remove ${amount} ${token.toUpperCase()} from swap contract?`)) return;
+  try {
+    const tokenAddr = token==='usdc' ? USDC_ADDR : EURC_ADDR;
+    const swap = new ethers.Contract(SWAP_ADDR, SWAP_ABI, signer);
+    // Verify pool balance before sending tx
+    const balances = await swap.getPoolBalances();
+    const poolBal = token==='usdc' ? Number(balances[0])/1e6 : Number(balances[1])/1e6;
+    if (amount > poolBal) {
+      toast(`Insufficient pool balance. Available: ${poolBal.toLocaleString(undefined,{maximumFractionDigits:2})} ${token.toUpperCase()}`, 'err');
+      addLog('err', `removeLiquidity: requested ${amount} but pool only has ${poolBal}`);
+      return;
+    }
+    toast('Removing...','info');
+    const amountUnits = BigInt(Math.floor(amount * 1_000_000));
+    const tx = await swap.withdrawToken(tokenAddr, amountUnits);
+    await tx.wait();
+    toast(`${amount} ${token.toUpperCase()} removed`,'ok');
+    addLog('ok',`Liquidity -${amount} ${token.toUpperCase()}. TX: ${tx.hash.slice(0,14)}...`);
+    document.getElementById('removeAmount').value='';
+    await loadStats();
+  } catch(e) {
+    const msg = e.reason || e.data?.message || e.message || '';
+    if (msg.includes('missing revert data') || msg.includes('estimateGas')) {
+      toast('Contract rejected: check you are the owner and amount ≤ pool balance','err');
+      addLog('err', `removeLiquidity: contract reverted (estimateGas) — likely not owner or amount too large. ${msg.slice(0,120)}`);
+    } else if (msg.includes('no matching') || msg.includes('is not a function')) {
+      toast('withdrawToken not found in ABI — use Arcscan directly','info');
+    } else {
+      toast('Failed: '+msg.slice(0,80), 'err');
+      addLog('err','removeLiquidity: '+msg);
+    }
+  }
+}
+
+async function toggleSwapPause() {
+  const p = document.getElementById('swapPause').checked;
+  try {
+    const swap = new ethers.Contract(SWAP_ADDR, SWAP_ABI, signer);
+    toast(`${p?'Pausing':'Resuming'} swap...`,'info');
+    const tx = await swap.setPaused(p); await tx.wait();
+    document.getElementById('swapDesc').textContent = p ? '⏸ Swapping is PAUSED' : '▶ Swapping is ACTIVE';
+    document.getElementById('s_swap_state').textContent = p?'PAUSED':'ACTIVE';
+    document.getElementById('s_swap_state').className = `kpi-val ${p?'r':'g'}`;
+    toast(`KudiSwap ${p?'paused':'resumed'}`, p?'err':'ok');
+    addLog(p?'err':'ok',`KudiSwap ${p?'PAUSED':'RESUMED'}. TX: ${tx.hash.slice(0,14)}...`);
+  } catch(e) { document.getElementById('swapPause').checked=!p; toast('Failed: '+(e.reason||e.message),'err'); addLog('err','swap setPaused: '+e.message); }
+}
+
+async function toggleYieldPause() {
+  const p = document.getElementById('yieldPause').checked;
+  try {
+    const yield_ = new ethers.Contract(YIELD_ADDR, YIELD_ABI, signer);
+    toast(`${p?'Pausing':'Resuming'} yield...`,'info');
+    const tx = await yield_.setPaused(p); await tx.wait();
+    document.getElementById('yieldDesc').textContent = p ? '⏸ Yield is PAUSED' : '▶ Yield is ACTIVE';
+    toast(`KudiYield ${p?'paused':'resumed'}`, p?'err':'ok');
+    addLog(p?'err':'ok',`KudiYield ${p?'PAUSED':'RESUMED'}. TX: ${tx.hash.slice(0,14)}...`);
+  } catch(e) { document.getElementById('yieldPause').checked=!p; toast('Failed: '+(e.reason||e.message),'err'); addLog('err','yield setPaused: '+e.message); }
+}
+
+async function updateSwapFee() {
+  const fee = parseFloat(document.getElementById('swapFeeInput').value);
+  if (isNaN(fee)||fee<0||fee>5) { toast('Fee must be 0–5%','err'); return; }
+  try {
+    const swap = new ethers.Contract(SWAP_ADDR, SWAP_ABI, signer);
+    const bps = Math.round(fee*100);
+    const tx = await swap.updateFee(bps); await tx.wait();
+    toast(`Fee set to ${fee}% (${bps} bps)`,'ok');
+    addLog('ok',`Swap fee: ${fee}%. TX: ${tx.hash.slice(0,14)}...`);
+  } catch(e) { toast('Failed: '+(e.reason||e.message),'err'); addLog('err','setFee: '+e.message); }
+}
+
+async function reapproveUsdc() {
+  try {
+    const yield_ = new ethers.Contract(YIELD_ADDR, YIELD_ABI, signer);
+    const tx = await yield_.reapprove(); await tx.wait();
+    toast('USDC + USYC re-approved (max)','ok');
+    addLog('ok',`Reapproved. TX: ${tx.hash.slice(0,14)}...`);
+  } catch(e) { toast('Failed: '+(e.reason||e.message),'err'); addLog('err','reapprove: '+e.message); }
+}
+
+// ── Send settings ──────────────────────────────────────────────
+async function updateSendSettings() {
+  const fee = parseFloat(document.getElementById('sendFee').value);
+  const min = parseFloat(document.getElementById('minSend').value);
+  if (isNaN(fee)||fee<0||fee>5) { toast('Fee must be 0–5%','err'); return; }
+  if (isNaN(min)||min<=0) { toast('Min must be >0','err'); return; }
+  const res = await callAdmin('/api/admin/send-settings', {send_fee_pct:fee, min_send_usd:min});
+  if (res?.status==='ok') { toast(`Saved: fee=${fee}% min=$${min}`,'ok'); addLog('ok',`Send settings updated`); }
+  else { toast('Save failed','err'); }
+}
+
+async function checkBackendHealth() {
+  try {
+    const res = await fetch(`${API}/api/health`);
+    const d = await res.json();
+    const ok = d.status==='ok';
+    toast(`${d.status.toUpperCase()} | FX:${d.components?.fx_oracle} | RPC:${d.components?.arc_rpc}`, ok?'ok':'info');
+    addLog(ok?'ok':'warn',`Health: ${JSON.stringify(d.components)}`);
+  } catch(e) { toast('Backend unreachable','err'); addLog('err','Health check failed'); }
+}
+
+async function loadCountries() {
+  try {
+    const res = await fetch(`${API}/api/countries`);
+    const d = await res.json();
+    const el = document.getElementById('countryList');
+    if (!el) return;
+    el.innerHTML = '';
+    for (const c of (d.countries||[])) {
+      const span = document.createElement('span');
+      span.style.cssText='background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--text);font-size:12px';
+      span.innerHTML = `${c.flag} ${c.name} <span style="color:var(--amber);font-family:var(--mono);font-size:10px">${c.currency}</span>`;
+      el.appendChild(span);
+    }
+  } catch(e) { const el=document.getElementById('countryList'); if(el) el.innerHTML='<span style="color:var(--muted)">Could not load</span>'; }
+}
+
+// ── Maintenance ────────────────────────────────────────────────
+async function checkMaintStatus() {
+  try {
+    const res = await fetch(`${API}/api/admin/status`);
+    const d = await res.json();
+    document.getElementById('maintToggle').checked = !!d.maintenance;
+    if (d.message) document.getElementById('maintMsg').value = d.message;
+    updateMaintPreview();
+  } catch(e){}
+}
+function updateMaintPreview() {
+  const on = document.getElementById('maintToggle').checked;
+  const msg = document.getElementById('maintMsg').value;
+  document.getElementById('maintPreview').classList.toggle('show', on);
+  document.getElementById('maintPmsg').textContent = msg;
+}
+async function setMaintenance() {
+  const on = document.getElementById('maintToggle').checked;
+  const msg = document.getElementById('maintMsg').value;
+  updateMaintPreview();
+  const res = await callAdmin('/api/admin/maintenance', {maintenance:on, message:msg});
+  if (res?.status==='ok') { toast(`Maintenance ${on?'ON':'OFF'}`, on?'err':'ok'); }
+}
+async function updateMaintenanceMsg() {
+  const on = document.getElementById('maintToggle').checked;
+  const msg = document.getElementById('maintMsg').value;
+  updateMaintPreview();
+  await callAdmin('/api/admin/maintenance', {maintenance:on, message:msg});
+  toast('Message updated','ok');
+}
+
+// ── Emergency ──────────────────────────────────────────────────
+async function pauseAll() {
+  if (!confirm('PAUSE ALL contracts? Stops all user activity immediately.')) return;
+  try {
+    const swap=new ethers.Contract(SWAP_ADDR,SWAP_ABI,signer), yield_=new ethers.Contract(YIELD_ADDR,YIELD_ABI,signer);
+    toast('Pausing all...','err');
+    const [t1,t2]=await Promise.all([swap.setPaused(true), yield_.setPaused(true)]);
+    await Promise.all([t1.wait(), t2.wait()]);
+    document.getElementById('swapPause').checked=true; document.getElementById('yieldPause').checked=true;
+    document.getElementById('swapDesc').textContent='⏸ Swapping is PAUSED';
+    document.getElementById('yieldDesc').textContent='⏸ Yield is PAUSED';
+    document.getElementById('s_swap_state').textContent='PAUSED';
+    document.getElementById('s_swap_state').className='kpi-val r';
+    toast('ALL contracts paused','err'); addLog('err','EMERGENCY PAUSE — all contracts paused');
+  } catch(e) { toast('Failed: '+(e.reason||e.message),'err'); addLog('err','pauseAll: '+e.message); }
+}
+async function resumeAll() {
+  if (!confirm('Resume ALL contracts?')) return;
+  try {
+    const swap=new ethers.Contract(SWAP_ADDR,SWAP_ABI,signer), yield_=new ethers.Contract(YIELD_ADDR,YIELD_ABI,signer);
+    toast('Resuming all...','info');
+    const [t1,t2]=await Promise.all([swap.setPaused(false), yield_.setPaused(false)]);
+    await Promise.all([t1.wait(), t2.wait()]);
+    document.getElementById('swapPause').checked=false; document.getElementById('yieldPause').checked=false;
+    document.getElementById('swapDesc').textContent='▶ Swapping is ACTIVE';
+    document.getElementById('yieldDesc').textContent='▶ Yield is ACTIVE';
+    document.getElementById('s_swap_state').textContent='ACTIVE';
+    document.getElementById('s_swap_state').className='kpi-val g';
+    toast('ALL contracts resumed','ok'); addLog('ok','All contracts RESUMED');
+  } catch(e) { toast('Failed: '+(e.reason||e.message),'err'); addLog('err','resumeAll: '+e.message); }
+}
+async function recoverToken() {
+  const addr=document.getElementById('recoverAddr').value, amt=document.getElementById('recoverAmt').value;
+  if (!addr||!amt) { toast('Fill both fields','err'); return; }
+  if (!confirm(`Recover ${amt} units of ${addr.slice(0,12)}... from KudiYield?`)) return;
+  try {
+    const yield_=new ethers.Contract(YIELD_ADDR,YIELD_ABI,signer);
+    const tx=await yield_.recoverToken(addr,BigInt(amt)); await tx.wait();
+    toast('Token recovered','ok'); addLog('ok',`Recovered ${addr.slice(0,12)} amt=${amt}`);
+  } catch(e) { toast('Failed: '+(e.reason||e.message),'err'); addLog('err','recoverToken: '+e.message); }
+}
+
+// ── Admin API helper ───────────────────────────────────────────
+async function callAdmin(endpoint, body) {
+  try {
+    const msg = `KudiArc admin: ${endpoint} at ${Date.now()}`;
+    const sig = await signer.signMessage(msg);
+    const res = await fetch(`${API}${endpoint}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({...body, signature:sig, message:msg, wallet:walletAddr})
+    });
+    return await res.json();
+  } catch(e) { addLog('err',`Admin API ${endpoint}: ${e.message}`); return null; }
+}
+async function getAdminSig() {
+  const ts  = Date.now();
+  const msg = `KudiArc admin: /api/admin/recent-txs at ${ts}`;
+  const sig = await signer.signMessage(msg);
+  return { sig, msg };
+}
+
+// ── Init listeners ─────────────────────────────────────────────
+document.getElementById('maintMsg').addEventListener('input', updateMaintPreview);
+
+// Mobile menu button
+document.querySelector('.tb-menu-btn').style.display = 'flex';
+</script>
+</body>
+</html>
