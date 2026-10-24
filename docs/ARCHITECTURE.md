@@ -128,78 +128,83 @@ All tokens are Circle-issued, first-class on Arc Network:
 ### Module Structure
 
 ```
-app.py                  — Main Flask application, route definitions
-db.py                   — SQLite schema + query helpers
-deploy.py               — Contract deployment script (Foundry/web3.py)
-add_liquidity.py        — Liquidity management helper
-requirements.txt        — Python dependencies
-.env                    — Environment variables (never commit)
+app.py              — Flask app: rates, countries, history, yield, health, admin settings
+kudisend.py         — KudiSend: challenge, quote, confirm, order status, admin order endpoints
+payouts.py          — Payout partners (Flutterwave, Bitnob, Paystack) and result verification
+webhooks.py         — Partner webhooks: authenticate, re-verify with the partner, update order
+swapverify.py       — Reads swaps from the chain before recording them
+adminauth.py        — Owner-signed, single-use, request-bound admin authentication
+db.py               — SQLite schema + helpers (orders, nonces, shared settings)
+deploy.py           — Contract deployment script (Foundry/web3.py)
+add_liquidity.py    — Liquidity management helper
+src/                — Solidity sources (KudiSwapV2, KudiYield, KudiSendEscrow)
+test/ · tests/      — Foundry tests (contracts) · pytest suite (backend)
+.env                — Environment variables (never commit)
 ```
 
-### Data Flow — Remittance
+### Data Flow — Remittance (escrow)
 
 ```
-Frontend                Backend                 Partner API
-   │                       │                        │
-   │── POST /send/payout ──▶│                        │
-   │   (wallet, amount,     │                        │
-   │    signature, bank)    │                        │
-   │                        │── Verify signature     │
-   │                        │── Validate bank code   │
-   │                        │── Check partner status │
-   │                        │                        │
-   │                        │── POST /transfer ─────▶│
-   │                        │   (amount, bank, name) │
-   │                        │                        │
-   │                        │◀── { reference, status}│
-   │                        │                        │
-   │                        │── Write to SQLite      │
-   │◀── { status, ref } ───│                        │
-   │                        │                        │
-   │  (partner webhook) ────│──────────────────────▶│
-   │                        │◀── { status: success } │
-   │                        │── Update TX status     │
+Frontend            Backend              Escrow contract       Partner API
+   │                   │                       │                    │
+   │─ challenge ──────▶│ one-time message      │                    │
+   │◀─ message ────────│                       │                    │
+   │─ sign + quote ───▶│ verify signature,     │                    │
+   │                   │ price (exact decimals)│                    │
+   │◀─ locked quote ───│ ref, amount, expiry   │                    │
+   │                                           │                    │
+   │─ approve + deposit(token, amount, ref) ──▶│                    │
+   │                   │                       │                    │
+   │─ confirm(tx) ────▶│── read receipt + ────▶│                    │
+   │                   │   deposits(ref)       │                    │
+   │                   │── claim order once    │                    │
+   │                   │── transfer ───────────────────────────────▶│
+   │◀─ order status ───│                       │                    │
+   │                   │◀── webhook ──────────────────────────────  │
+   │                   │── re-check with partner, update order      │
+   │                   │                       │                    │
+ Owner wallet          │                       │                    │
+   │─ settle(refs) / refund(ref) ────────────▶│  (signed in wallet) │
+   │─ chain-sync ─────▶│ copy result to DB     │                    │
 ```
+
+If a sender never confirms, the owner's **reconcile** finds the deposit by its on-chain event. If the owner does nothing, the sender can call `claimRefund` after 72 hours.
 
 ### Database Schema
 
 ```sql
--- Swap records
+-- History of swaps and sends (shown in the app)
 CREATE TABLE transactions (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    wallet       TEXT    NOT NULL,
-    tx_type      TEXT    NOT NULL,  -- 'swap' | 'send'
-    from_token   TEXT,
-    to_token     TEXT,
-    amount_in    REAL,
-    amount_out   REAL,
-    rate         REAL,
-    tx_hash      TEXT,
-    created_at   TEXT    DEFAULT (datetime('now'))
+    id INTEGER PRIMARY KEY AUTOINCREMENT, tx_type TEXT, wallet TEXT,
+    from_token TEXT, to_token TEXT, amount_in REAL, amount_out REAL, fee REAL,
+    rate REAL, ngn_equiv REAL, tx_hash TEXT,
+    recipient_name TEXT, recipient_bank TEXT, recipient_account TEXT, recipient_phone TEXT,
+    bitnob_ref TEXT, status TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX idx_tx_hash_unique ON transactions(tx_hash) WHERE tx_hash IS NOT NULL;
+
+-- One row per KudiSend order (the source of truth for payouts)
+CREATE TABLE send_orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    quote_id TEXT UNIQUE NOT NULL, ref TEXT UNIQUE NOT NULL, wallet TEXT NOT NULL,
+    token TEXT, token_address TEXT, amount_base INTEGER, fee_base INTEGER,
+    rate TEXT, payout_amount TEXT, country_code TEXT, currency TEXT, method TEXT,
+    recipient_name TEXT, bank_code TEXT, bank_name TEXT, account_number TEXT, phone TEXT,
+    status TEXT NOT NULL DEFAULT 'quoted',   -- quoted | payout_pending | completed | refund_required | payout_unknown | refunded
+    tx_hash TEXT UNIQUE, provider TEXT, provider_ref TEXT, error TEXT,
+    chain_state TEXT NOT NULL DEFAULT 'none',  -- none | settled | refunded
+    expires_at INTEGER, created_at INTEGER, updated_at INTEGER
 );
 
--- Send/remittance records
-CREATE TABLE sends (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    wallet          TEXT    NOT NULL,
-    amount_usdc     REAL    NOT NULL,
-    currency        TEXT    NOT NULL,
-    country_code    TEXT    NOT NULL,
-    recipient_name  TEXT    NOT NULL,
-    account_number  TEXT    NOT NULL,
-    bank_code       TEXT,
-    reference       TEXT    UNIQUE,
-    partner_ref     TEXT,
-    status          TEXT    DEFAULT 'pending',
-    payout_amount   REAL,
-    rate_used       REAL,
-    created_at      TEXT    DEFAULT (datetime('now'))
-);
+-- Single-use values
+CREATE TABLE send_challenges (nonce TEXT PRIMARY KEY, wallet TEXT, message TEXT, expires_at INTEGER, used INTEGER);
+CREATE TABLE admin_nonces    (nonce TEXT PRIMARY KEY, expires_at INTEGER, used INTEGER);
 
-CREATE INDEX idx_transactions_wallet ON transactions(wallet);
-CREATE INDEX idx_sends_wallet        ON sends(wallet);
-CREATE INDEX idx_sends_reference     ON sends(reference);
+-- Admin settings shared by every worker
+CREATE TABLE kv_state (ns TEXT, key TEXT, value TEXT, PRIMARY KEY (ns, key));
 ```
+
+Order status changes are atomic (`UPDATE … WHERE status = …`) so concurrent requests cannot pay an order twice.
 
 ### FX Rate Caching
 
@@ -271,14 +276,14 @@ await fetch('/api/swap/record', { method: 'POST', body: JSON.stringify({...}) })
 Oracle Cloud Free Tier VM
 ├── Ubuntu 22.04 LTS
 ├── 1 OCPU / 1GB RAM / 47GB storage
-├── Public IP: 129.80.199.123
+├── Public IP: <server IP>
 │
 ├── Nginx
 │   ├── Serves static HTML files
-│   └── Reverse proxies /api/* to Flask:5000
+│   └── Reverse proxies /api/* to Flask:5001
 │
 ├── Gunicorn (WSGI)
-│   └── Flask app (4 workers)
+│   └── Flask app (2 workers)
 │
 ├── systemd
 │   └── kudi-arc.service (auto-restart on failure)
@@ -286,10 +291,10 @@ Oracle Cloud Free Tier VM
 ├── UFW Firewall
 │   ├── 22/tcp (SSH)
 │   ├── 80/tcp (HTTP)
-│   └── 443/tcp (HTTPS — mainnet only)
+│   └── 443/tcp (HTTPS)
 │
 └── SQLite
-    └── /var/lib/kudi-arc/kudi.db
+    └── kudi.db (next to db.py, or the path in DB_PATH)
 ```
 
 ### Planned (Mainnet)
@@ -300,8 +305,6 @@ Production VM (dedicated)
 │   └── Separate DB host with daily backups
 ├── Redis
 │   └── FX rate cache (replaces in-memory)
-├── Nginx + Certbot SSL
-│   └── api.kudiarc.app
 ├── Gunicorn (8+ workers)
 └── Systemd + monitoring (Prometheus/Grafana or UptimeRobot)
 ```
@@ -314,10 +317,14 @@ See [SECURITY.md](./SECURITY.md) for the full security policy.
 
 **Key design decisions:**
 
-- **No private keys on server** — all transaction signing happens in the user's wallet. The backend never holds custody.
-- **Signature verification** — remittance requests are authorized by EIP-191 wallet signatures, not API tokens.
-- **On-chain event log** — every admin action (rate change, withdrawal) is permanently recorded on Arc Network.
-- **Timelocks as circuit breakers** — 5-minute rate timelock + 24-hour withdrawal timelock give users reaction time.
+- **No private keys on the server.** Deposits are verified by reading the chain; settle and refund are signed by the owner's wallet. The backend never holds custody or a signing key.
+- **Escrow, not trust.** A sender's funds sit in `KudiSendEscrow` until the payout is verified, and can always be reclaimed after 72 hours.
+- **Locked, signed quotes.** Fee, rate and payout are fixed server-side for 10 minutes; the deposit must match the quote exactly (wallet, token, amount, reference).
+- **Owner-only admin.** Every admin request carries a single-use nonce and a signature bound to the exact request. Admin is disabled if `OWNER_ADDRESS` is unset.
+- **Webhooks are triggers, not truth.** They are authenticated (and rejected when unconfigured), then re-checked with the partner before an order changes.
+- **No double payouts.** A partner timeout never triggers a second partner; the order is held for review.
+- **On-chain event log.** Every admin action on the contracts is permanently recorded on Arc Network.
+- **Timelocks as circuit breakers.** 5-minute rate timelock + 24-hour withdrawal timelock on KudiSwap give users reaction time.
 
 ---
 
@@ -326,24 +333,25 @@ See [SECURITY.md](./SECURITY.md) for the full security policy.
 ### Complete Remittance Flow
 
 ```
-User     Frontend    Backend    KudiSwap     Bitnob
- │           │           │          │           │
- │──Connect──▶│           │          │           │
- │           │──getRate──▶│          │           │
- │           │◀──rate─────│          │           │
- │──InputSend▶│           │          │           │
- │           │──approve───────────────▶│          │
- │           │◀──txHash───────────────│          │
- │           │──sign msg──▶(wallet)   │          │
- │           │◀──signature─│          │          │
- │           │──POST /payout─▶│       │          │
- │           │           │──verifySign│          │
- │           │           │──POST transfer────────▶│
- │           │           │◀──{ ref, pending }─────│
- │           │◀──{ ref }──│           │          │
- │──ShowRef──│           │           │          │
- │           │           │◀──webhook(success)────│
- │           │           │──updateDB  │          │
+User     Frontend    Backend      Escrow      Partner
+ │          │           │            │           │
+ │─Connect─▶│           │            │           │
+ │─Input───▶│           │            │           │
+ │          │─challenge▶│            │           │
+ │          │◀─message──│            │           │
+ │          │─sign msg─▶(wallet)     │           │
+ │          │─quote────▶│ verify sig │           │
+ │          │◀─locked───│            │           │
+ │          │─approve + deposit(ref)▶│           │
+ │          │◀─txHash───────────────│           │
+ │          │─confirm──▶│─read chain▶│           │
+ │          │           │◀─deposit ok│           │
+ │          │           │─transfer──────────────▶│
+ │          │◀─status───│            │           │
+ │          │           │◀─webhook──────────────│
+ │          │           │─re-check with partner─▶│
+ │          │           │─update order           │
+ │ Owner────────────────────settle / refund────▶│
 ```
 
 ---

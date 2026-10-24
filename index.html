@@ -448,7 +448,7 @@ function closeDrawer(){document.getElementById('drawer').classList.remove('open'
   <!-- Footer -->
   <div class="page-footer">
     <div>Powered by <strong>Arc Testnet</strong> · Built in Africa 🌍</div>
-    <div><a href="https://testnet.arcscan.app" target="_blank">Explorer</a> · <a href="https://faucet.circle.com" target="_blank">Faucet</a></div>
+    <div><a href="https://explorer.testnet.arc.io" target="_blank">Explorer</a> · <a href="https://faucet.circle.com" target="_blank">Faucet</a></div>
     <div><span class="network-badge"><span class="network-dot"></span>Chain 5042002</span></div>
     <div class="social-row">
       <a href="https://x.com/KudiArc" target="_blank" class="social-link" title="X / Twitter"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.259 5.63 5.905-5.63zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
@@ -520,9 +520,9 @@ async function connectWallet() {
     try {
       await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{
         chainId: CONFIG.CHAIN_ID_HEX, chainName: 'Arc Testnet',
-        nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 6 },
-        rpcUrls: ['https://rpc.testnet.arc.network'],
-        blockExplorerUrls: ['https://testnet.arcscan.app']
+        nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+        rpcUrls: ['https://rpc.testnet.arc.io'],
+        blockExplorerUrls: ['https://explorer.testnet.arc.io']
       }]});
     } catch(e) {}
     await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CONFIG.CHAIN_ID_HEX }]});
@@ -572,7 +572,7 @@ function updateBalanceDisplay() {
 // ── Pool stats ──
 async function fetchPoolStats() {
   try {
-    const kudi = new ethers.Contract(CONFIG.CONTRACT_ADDRESS, CONFIG.KUDI_ABI, new ethers.JsonRpcProvider('https://rpc.testnet.arc.network'));
+    const kudi = new ethers.Contract(CONFIG.CONTRACT_ADDRESS, CONFIG.KUDI_ABI, new ethers.JsonRpcProvider('https://rpc.testnet.arc.io'));
     const [balances, swaps] = await Promise.all([kudi.getPoolBalances(), kudi.totalSwaps()]);
     const u = Number(balances[0]) / 1e6;
     const e = Number(balances[1]) / 1e6;
@@ -891,7 +891,7 @@ async function loadHistory() {
       const amtIn = parseFloat(tx.amount_in || 0).toFixed(4);
       const amtOut = parseFloat(tx.amount_out || 0).toFixed(4);
       const hash = tx.tx_hash ? tx.tx_hash.slice(0,10) + '…' : 'Pending';
-      const hashLink = tx.tx_hash ? `<a href="https://testnet.arcscan.app/tx/${tx.tx_hash}" target="_blank" style="color:var(--jade);text-decoration:none">${hash}</a>` : hash;
+      const hashLink = tx.tx_hash ? `<a href="https://explorer.testnet.arc.io/tx/${tx.tx_hash}" target="_blank" style="color:var(--jade);text-decoration:none">${hash}</a>` : hash;
       if (isSwap) {
         return `<div class="htx">
           <div class="htx-icon swap">⇄</div>

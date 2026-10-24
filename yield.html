@@ -526,9 +526,9 @@ async function connectWallet() {
     try {
       await window.ethereum.request({ method:'wallet_addEthereumChain', params:[{
         chainId:'0x4CEF52', chainName:'Arc Testnet',
-        nativeCurrency:{name:'USDC',symbol:'USDC',decimals:6},
-        rpcUrls:['https://rpc.testnet.arc.network'],
-        blockExplorerUrls:['https://testnet.arcscan.app']
+        nativeCurrency:{name:'USDC',symbol:'USDC',decimals:18},
+        rpcUrls:['https://rpc.testnet.arc.io'],
+        blockExplorerUrls:['https://explorer.testnet.arc.io']
       }]});
     } catch(e) {}
     try { await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x4CEF52'}]}); } catch(e) {}
@@ -780,7 +780,7 @@ async function loadHistory(wallet) {
       const isSwap = tx.tx_type === 'swap';
       const isSend = tx.tx_type === 'send';
       const date = tx.created_at ? new Date(tx.created_at).toLocaleDateString('en-NG',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
-      const hash = tx.tx_hash ? `<a href="https://testnet.arcscan.app/tx/${tx.tx_hash}" target="_blank" style="color:#27AE74;text-decoration:none">${tx.tx_hash.slice(0,10)}…</a>` : '<span style="color:#4a6355">pending</span>';
+      const hash = tx.tx_hash ? `<a href="https://explorer.testnet.arc.io/tx/${tx.tx_hash}" target="_blank" style="color:#27AE74;text-decoration:none">${tx.tx_hash.slice(0,10)}…</a>` : '<span style="color:#4a6355">pending</span>';
       const amtIn = parseFloat(tx.amount_in||0).toFixed(4);
       const amtOut = parseFloat(tx.amount_out||0).toFixed(4);
       if (isSwap) return `<div class="htx"><div class="htx-ico swap">⇄</div><div class="htx-body"><div class="htx-title">${tx.from_token||'USDC'} → ${tx.to_token||'EURC'}</div><div class="htx-sub">${hash}</div></div><div class="htx-right"><div class="htx-amt">${amtIn} → ${amtOut}</div><div class="htx-time">${date}</div></div></div>`;

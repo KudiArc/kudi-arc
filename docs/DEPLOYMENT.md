@@ -19,10 +19,12 @@ Add Arc Testnet to your wallet:
 | Field | Value |
 |-------|-------|
 | Network Name | Arc Testnet |
-| RPC URL | `https://rpc.testnet.arc.network` |
+| RPC URL | `https://rpc.testnet.arc.io` |
 | Chain ID | `5042002` |
 | Currency Symbol | USDC |
-| Block Explorer | `https://testnet.arcscan.app` |
+| Block Explorer | `https://explorer.testnet.arc.io` |
+
+For mainnet set `NETWORK=mainnet` (chain ID 5042) in `.env`; the backend and the send/admin pages then take the RPC, explorer and chain ID from that setting.
 
 ### Software Requirements
 
@@ -43,8 +45,8 @@ git clone https://github.com/KudiArc/kudi-arc.git
 cd kudi-arc
 
 # Create Python virtual environment
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv kudi-env
+source kudi-env/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -57,41 +59,42 @@ nano .env
 ### Environment Variables (`.env`)
 
 ```bash
-# ── Wallet ──────────────────────────────────────────────────────
-DEPLOYER_PRIVATE_KEY=0x_your_private_key_here
-DEPLOYER_ADDRESS=0x_your_wallet_address
+# ── Network ──────────────────────────────────────────────────────
+NETWORK=testnet                 # testnet | mainnet (sets RPC, chain ID, explorer, tokens)
+# ARC_RPC, CHAIN_ID, EXPLORER_URL, USDC_ADDRESS, EURC_ADDRESS override the preset
 
-# ── Arc Network ──────────────────────────────────────────────────
-ARC_RPC_URL=https://rpc.testnet.arc.network
-ARC_CHAIN_ID=5042002
+# ── Admin (REQUIRED) ─────────────────────────────────────────────
+OWNER_ADDRESS=0xYourOwnerWalletAddress   # admin stays disabled if unset
+PUBLIC_DOMAIN=kudiarc.xyz
 
-# ── Deployed Contract Addresses ──────────────────────────────────
-KUDISWAP_ADDRESS=0x8a10D0e61201000B5456EC725165892B08832C5f
-USDC_ADDRESS=0x3600000000000000000000000000000000000000
-EURC_ADDRESS=0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a
-USYC_ADDRESS=0xe9185F0c5F296Ed1797AaE4238D26CCaBEadb86C
+# ── Contracts ────────────────────────────────────────────────────
+KUDI_CONTRACT_ADDRESS=0x8a10D0e61201000B5456EC725165892B08832C5f   # KudiSwap V2
+ESCROW_ADDRESS=0xYourDeployedKudiSendEscrow
 
-# ── Payout Partners ──────────────────────────────────────────────
-BITNOB_API_KEY=your_bitnob_api_key
-BITNOB_BASE_URL=https://api.bitnob.co/api/v1
+# ── KudiSend ─────────────────────────────────────────────────────
+SEND_MODE=mock                  # "live" enables real payouts; anything else = sandbox
+QUOTE_TTL_SECONDS=600
+SEND_MIN_USD=10
+SEND_MAX_USD=50
 
-FLUTTERWAVE_SECRET_KEY=FLWSECK-your_key
-FLUTTERWAVE_BASE_URL=https://api.flutterwave.com/v3
+# ── Payout Partners (used only when SEND_MODE=live) ──────────────
+FLUTTERWAVE_SECRET_KEY=mock
+BITNOB_SECRET_KEY=mock
+BITNOB_BASE_URL=https://sandboxapi.bitnob.co/api/v1
+PAYSTACK_SECRET_KEY=mock
 
-WAVE_API_KEY=your_wave_api_key
-WAVE_BASE_URL=https://api.wave.com/v1
+# ── Webhook secrets (webhooks are rejected if unset) ─────────────
+FLW_WEBHOOK_SECRET=
+BITNOB_WEBHOOK_SECRET=
 
-# ── FX Oracle ────────────────────────────────────────────────────
-OXR_APP_ID=your_open_exchange_rates_app_id
-
-# ── App Config ───────────────────────────────────────────────────
-FLASK_ENV=production
-SECRET_KEY=generate_a_long_random_string_here
-DB_PATH=/var/lib/kudi-arc/kudi.db
-PORT=5000
+# ── Server ───────────────────────────────────────────────────────
+PORT=5001
+DB_PATH=/absolute/path/to/kudi.db   # optional: defaults to kudi.db next to db.py
 ```
 
 > ⚠️ **Never commit `.env` to git.** It is already in `.gitignore`.
+>
+> ⚠️ **Never put a private key in the server's `.env`.** The backend does not need one: deposits are verified by reading the chain, and the owner signs settle/refund from their own wallet. Keys are only used on your own machine for the one-off contract deployment (typed at a prompt).
 
 ---
 
@@ -116,42 +119,59 @@ sqlite3 /var/lib/kudi-arc/kudi.db ".tables"
 
 > **Skip this section** if you are using the existing verified deployment at `0x8a10D0e61201000B5456EC725165892B08832C5f`.
 
-### Compile Contract
+### Compile and Test
 
 ```bash
-# Using Foundry
-forge build contracts/KudiSwapV2.sol
-
-# Or using the Python deploy script
-python3 deploy.py --compile-only
+curl -L https://foundry.paradigm.xyz | bash && foundryup
+forge install foundry-rs/forge-std      # test library (kept out of git)
+forge build
+forge test                              # 22 escrow tests
 ```
 
-### Deploy
+### Deploy KudiSwap V2
 
 ```bash
-# Deploy KudiSwap V2
-python3 deploy.py
-
-# Or with Foundry
-forge create contracts/KudiSwapV2.sol:KudiSwapV2 \
-  --rpc-url $ARC_RPC_URL \
-  --private-key $DEPLOYER_PRIVATE_KEY \
+forge create src/KudiSwapV2.sol:KudiSwapV2 \
+  --rpc-url https://rpc.testnet.arc.io \
+  --interactive --broadcast \
   --constructor-args $USDC_ADDRESS $EURC_ADDRESS
 ```
 
-Note the deployed address and update `KUDISWAP_ADDRESS` in `.env`.
+`--interactive` asks for the deployer key as hidden input, so it never lands in your shell history. Note the deployed address and set `KUDI_CONTRACT_ADDRESS` in `.env`.
 
-### Verify on Arcscan
+### Deploy KudiSendEscrow
+
+The deployer only pays gas. `ESCROW_OWNER` is the wallet that will control the escrow (settle, refund, pause) and should be a different wallet from the deployer.
 
 ```bash
-forge verify-contract \
-  --rpc-url $ARC_RPC_URL \
-  --etherscan-api-key dummy \
-  --verifier blockscout \
-  --verifier-url https://testnet.arcscan.app/api \
-  $KUDISWAP_ADDRESS \
-  contracts/KudiSwapV2.sol:KudiSwapV2
+export ESCROW_OWNER=0xYourOwnerWallet
+export ESCROW_TREASURY=0xWhereSettledFundsGo
+
+forge script script/DeployEscrow.s.sol:DeployEscrow \
+  --rpc-url https://rpc.testnet.arc.io \
+  --broadcast --interactive \
+  --verify --verifier blockscout \
+  --verifier-url https://explorer.testnet.arc.io/api/
 ```
+
+Defaults: Arc Testnet USDC and EURC, minimum 10 and maximum 50 per deposit (`ESCROW_MIN` / `ESCROW_MAX` in token base units, `ESCROW_USDC` / `ESCROW_EURC` to override the tokens). The script prints `KudiSendEscrow: 0x…`. Set that as `ESCROW_ADDRESS` in `.env`, then check it:
+
+```bash
+cast call $ESCROW_ADDRESS "owner()(address)" --rpc-url https://rpc.testnet.arc.io
+cast call $ESCROW_ADDRESS "tokenCount()(uint256)" --rpc-url https://rpc.testnet.arc.io   # expect 2
+```
+
+If automatic verification fails the deploy has still succeeded. Verify separately:
+
+```bash
+forge verify-contract $ESCROW_ADDRESS src/KudiSendEscrow.sol:KudiSendEscrow \
+  --rpc-url https://rpc.testnet.arc.io --verifier blockscout \
+  --verifier-url https://explorer.testnet.arc.io/api/ --watch \
+  --constructor-args $(cast abi-encode "constructor(address,address,uint256,uint256,address[])" \
+    $ESCROW_OWNER $ESCROW_TREASURY 10000000 50000000 "[$USDC_ADDRESS,$EURC_ADDRESS]")
+```
+
+The `broadcast/` folder Foundry creates is in `.gitignore`. Do not commit it.
 
 ### Seed Initial Liquidity
 
@@ -167,7 +187,7 @@ from web3 import Web3
 import json, os
 from dotenv import load_dotenv
 load_dotenv()
-w3 = Web3(Web3.HTTPProvider(os.environ['ARC_RPC_URL']))
+w3 = Web3(Web3.HTTPProvider(os.environ['ARC_RPC']))
 # ... (see add_liquidity.py for full implementation)
 print('Pool seeded')
 "
@@ -180,12 +200,14 @@ print('Pool seeded')
 ### Run Locally (Development)
 
 ```bash
-source venv/bin/activate
+source kudi-env/bin/activate
 python3 app.py
-# API available at http://localhost:5000
+# API available at http://localhost:5001
 ```
 
 ### Production (Gunicorn + systemd)
+
+Gunicorn listens on localhost only; nginx (below) is the public entry point.
 
 ```bash
 # Create systemd service
@@ -198,24 +220,14 @@ After=network.target
 Type=simple
 User=ubuntu
 WorkingDirectory=/home/ubuntu/kudi-arc
-Environment="PATH=/home/ubuntu/kudi-arc/venv/bin"
-ExecStart=/home/ubuntu/kudi-arc/venv/bin/gunicorn \
-    --workers 4 \
-    --bind 127.0.0.1:5000 \
-    --timeout 120 \
-    --access-logfile /var/log/kudi-arc/access.log \
-    --error-logfile /var/log/kudi-arc/error.log \
-    app:app
+Environment="PATH=/home/ubuntu/kudi-arc/kudi-env/bin"
+ExecStart=/home/ubuntu/kudi-arc/kudi-env/bin/gunicorn -w 2 -b 127.0.0.1:5001 app:app
 Restart=always
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 EOF
-
-# Create log directory
-sudo mkdir -p /var/log/kudi-arc
-sudo chown ubuntu:ubuntu /var/log/kudi-arc
 
 # Enable and start service
 sudo systemctl daemon-reload
@@ -247,7 +259,7 @@ server {
 
     # Proxy API requests to Flask
     location /api/ {
-        proxy_pass         http://127.0.0.1:5000;
+        proxy_pass         http://127.0.0.1:5001;
         proxy_set_header   Host \$host;
         proxy_set_header   X-Real-IP \$remote_addr;
         proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -275,7 +287,7 @@ sudo nginx -t && sudo systemctl reload nginx
 sudo apt install certbot python3-certbot-nginx
 
 # Obtain certificate (replace with your domain)
-sudo certbot --nginx -d kudiarc.app -d api.kudiarc.app
+sudo certbot --nginx -d kudiarc.xyz
 
 # Auto-renewal is set up by Certbot automatically
 # Verify: sudo certbot renew --dry-run
@@ -299,7 +311,7 @@ sudo ufw status
 Run these after deployment to verify everything is working:
 
 ```bash
-BASE="http://129.80.199.123"  # Replace with your server IP or domain
+BASE="https://kudiarc.xyz"  # or http://your-server-ip
 
 # Health check
 curl -s $BASE/api/health | python3 -m json.tool
@@ -313,16 +325,49 @@ curl -s $BASE/api/countries | python3 -m json.tool
 # Banks
 curl -s $BASE/api/banks | python3 -m json.tool
 
+# Send settings (escrow address, network, limits)
+curl -s $BASE/api/send/config | python3 -m json.tool
+
+# Admin login is disabled-by-default: this should return a nonce, not a 503
+curl -s $BASE/api/admin/challenge | python3 -m json.tool
+
 # Yield stats
 curl -s $BASE/api/yield/stats | python3 -m json.tool
 
 # History (replace with a real wallet that has testnet activity)
-curl -s "$BASE/api/history/0x7B77..." | python3 -m json.tool
+curl -s "$BASE/api/history/0xYourWallet" | python3 -m json.tool
 ```
 
 Expected: all return `200 OK` with valid JSON, and `/api/health` shows all components as `"ok"`.
 
 ---
+
+## Owner Operations (Settle & Refund)
+
+Deposits sit in the escrow until the owner settles or refunds them. Open **admin.html**, connect the owner wallet (`OWNER_ADDRESS`) and use **Send Orders**:
+
+| List | What to do |
+|------|-----------|
+| Ready to settle | Payout confirmed. **Settle** sends the funds to the treasury (up to 100 per transaction) |
+| Needs refund | Payout failed or the deposit arrived late. **Refund** returns the deposit to the sender |
+| Needs your decision | Partner result unclear. Check the partner dashboard, then record **Was paid** or **Not paid** |
+| Waiting for provider | Partner accepted the payout; the final result arrives by webhook |
+
+**Sync chain** copies settle/refund results into the database. **Find missed deposits** processes deposits that were made but never confirmed (for example a sender who closed the page). Aim to settle or refund every order within 24 to 48 hours. A sender can always reclaim an untouched deposit after 72 hours.
+
+Every admin action is signed by the owner wallet. The server never holds a key.
+
+## Going Live with Real Payouts
+
+Keep `SEND_MODE` unset (sandbox) until all of these are done:
+
+1. `OWNER_ADDRESS`, `ESCROW_ADDRESS` and the partner keys are set, and the partner keys are **live** keys.
+2. `FLW_WEBHOOK_SECRET` (and `BITNOB_WEBHOOK_SECRET` if you use Bitnob) are set, and the same values are configured in each partner's dashboard.
+3. Webhook URLs are registered with each partner: `/api/send/flw-webhook`, `/api/send/paystack-webhook`, `/api/send/webhook`.
+4. A small end-to-end transfer has been tested in the partner's sandbox.
+5. Then set `SEND_MODE=live` and restart.
+
+> Bitnob's webhook signature scheme and status lookup are not confirmed against its official docs. Test Bitnob in its sandbox before relying on it.
 
 ## 9. Updating the Deployment
 
@@ -333,10 +378,13 @@ cd /home/ubuntu/kudi-arc
 git pull origin main
 
 # Install any new dependencies
-source venv/bin/activate
+source kudi-env/bin/activate
 pip install -r requirements.txt
 
-# Restart backend
+# Run the tests first
+pip install -r requirements-dev.txt && python3 -m pytest
+
+# Restart the backend (a full restart is required to load new code)
 sudo systemctl restart kudi-arc
 
 # Check logs for errors
@@ -376,7 +424,7 @@ Alert threshold: any non-`200` response from `/api/health`.
 | Symptom | Likely Cause | Fix |
 |---------|-------------|-----|
 | `502 Bad Gateway` | Flask not running | `sudo systemctl restart kudi-arc` |
-| `Connection refused` on API | Gunicorn not bound to correct port | Check `PORT=5000` in `.env` |
+| `Connection refused` on API | Gunicorn port differs from nginx | The `-b` address in the service file (`127.0.0.1:5001`) must match nginx's `proxy_pass` |
 | `Rate fetch failed` | Invalid OXR App ID | Verify `OXR_APP_ID` in `.env` |
 | Swap preview returns 0 | Pool is empty | Run `python3 add_liquidity.py` |
 | Send returns `partner_unavailable` | Bitnob/Flutterwave API key invalid | Check partner API keys in `.env` |
@@ -387,3 +435,18 @@ Alert threshold: any non-`200` response from `/api/health`.
 
 *For architecture details, see [ARCHITECTURE.md](./ARCHITECTURE.md).*  
 *For security details, see [SECURITY.md](./SECURITY.md).*
+
+### Admin dashboard says "Admin is not configured"
+`OWNER_ADDRESS` is missing from `.env`. Set it to the owner wallet and restart.
+
+### Send shows "Sending is not available yet"
+`ESCROW_ADDRESS` is missing or invalid. In live mode at least one real partner key must also be set.
+
+### Webhooks return 503
+The matching webhook secret (`FLW_WEBHOOK_SECRET`, `BITNOB_WEBHOOK_SECRET`) or partner key is not set. Webhooks are intentionally rejected until configured.
+
+### "Chain mismatch" or "Chain lookup failed" on send
+The server's `NETWORK` / `CHAIN_ID` / `ARC_RPC` does not match the chain the user's wallet is on, or the RPC is unreachable.
+
+### An extra gunicorn is listening on port 5000
+`start.sh` / `gunicorn.conf.py` are only a quick manual alternative. They bind **all interfaces** on port 5000, bypassing nginx and TLS. Do not run them alongside the systemd service, and keep port 5000 closed in your firewall. Stop a stray one with `pkill -f "gunicorn -c gunicorn.conf.py"`.

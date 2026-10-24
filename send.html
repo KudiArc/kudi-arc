@@ -443,7 +443,7 @@ function closeDrawer() {
         </div>
         <div class="field">
           <div class="field-label">Account Number</div>
-          <input type="number" class="field-input" id="accountNumber" placeholder="0123456789" oninput="updateSummary()">
+          <input type="text" inputmode="numeric" autocomplete="off" class="field-input" id="accountNumber" placeholder="0123456789" oninput="updateSummary()">
         </div>
         <div class="field">
           <div class="field-label">Account Name</div>
@@ -483,7 +483,7 @@ function closeDrawer() {
       </div>
       <div class="how-step">
         <div class="how-num">4</div>
-        <div class="how-text"><strong>Sign in your wallet</strong> — your USDC is approved and the transfer is authorized cryptographically. No passwords needed.</div>
+        <div class="how-text"><strong>Approve and deposit</strong> — your funds go into a secure escrow and are released only after the payout is verified. Unused deposits can be reclaimed after 72 hours.</div>
       </div>
       <div class="how-step">
         <div class="how-num">5</div>
@@ -503,7 +503,7 @@ function closeDrawer() {
   <!-- Success Screen -->
   <div class="status-screen" id="successScreen">
     <div class="status-icon">✅</div>
-    <div class="status-title" style="color:var(--jade)">Transfer Sent!</div>
+    <div class="status-title" style="color:var(--jade)" id="successTitle">Transfer Sent!</div>
     <div class="status-msg" id="successMsg"></div>
     <div class="status-ref" id="successRef"></div>
     <div class="status-actions">
@@ -515,7 +515,7 @@ function closeDrawer() {
   <!-- Failed Screen -->
   <div class="status-screen" id="failedScreen">
     <div class="status-icon">❌</div>
-    <div class="status-title" style="color:var(--error)">Transfer Failed</div>
+    <div class="status-title" style="color:var(--error)" id="failedTitle">Transfer Failed</div>
     <div class="status-msg" id="failedMsg"></div>
     <div class="status-actions">
       <button class="btn-outline" onclick="showMain()">Try Again</button>
@@ -527,18 +527,19 @@ function closeDrawer() {
 <div class="modal-overlay" id="confirmOverlay">
   <div class="modal">
     <div class="modal-title">Confirm Transfer</div>
-    <div class="modal-sub">Review carefully before signing in your wallet</div>
+    <div class="modal-sub">Locked quote. Review it before you pay</div>
     <div class="modal-row"><span class="modal-label">You send</span><span class="modal-value big" id="mSend">—</span></div>
     <div class="modal-row"><span class="modal-label">Recipient gets</span><span class="modal-value big" style="color:var(--jade)" id="mReceive">—</span></div>
     <div class="modal-row"><span class="modal-label">Country</span><span class="modal-value" id="mCountry">—</span></div>
     <div class="modal-row"><span class="modal-label">Rate</span><span class="modal-value" id="mRate">—</span></div>
-    <div class="modal-row"><span class="modal-label">Fee (0.30%)</span><span class="modal-value" id="mFee">—</span></div>
+    <div class="modal-row"><span class="modal-label" id="mFeeLabel">Fee</span><span class="modal-value" id="mFee">—</span></div>
     <div class="modal-row"><span class="modal-label">Recipient</span><span class="modal-value" id="mRecipient">—</span></div>
     <div class="modal-row"><span class="modal-label">Via</span><span class="modal-value" id="mBank">—</span></div>
-    <div class="modal-warn">⚠️ You will sign once in your wallet to authorize this transfer. This is cryptographic proof of your intent.</div>
+    <div class="modal-row"><span class="modal-label">Quote valid for</span><span class="modal-value" id="mTimer">—</span></div>
+    <div class="modal-warn">⚠️ Next you will approve the token and deposit it into the KudiArc escrow contract. It is released only after the payout is verified, and you can reclaim it after 72 hours if anything goes wrong.</div>
     <div class="modal-btns">
-      <button class="btn-cancel" onclick="closeConfirm()">Cancel</button>
-      <button class="btn-confirm" onclick="executeSign()">Sign & Send</button>
+      <button class="btn-cancel" onclick="cancelQuote()">Cancel</button>
+      <button class="btn-confirm" id="confirmBtn" onclick="confirmAndPay()">Confirm & Pay</button>
     </div>
   </div>
 </div>
@@ -586,14 +587,18 @@ const EURC_ADDR    = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
 const KUDI_CONTRACT= '0x8a10D0e61201000B5456EC725165892B08832C5f';
 const ERC20_ABI    = [
   'function balanceOf(address) view returns (uint256)',
+  'function allowance(address,address) view returns (uint256)',
   'function approve(address,uint256) returns (bool)',
 ];
+const ESCROW_ABI   = ['function deposit(address token,uint256 amount,bytes32 ref)'];
+const PENDING_KEY  = 'kudiarc_pending_send';
 
 let state = {
   wallet:null, provider:null, signer:null,
   method:'bank', countries:[], selectedCountry:null,
   nigeriaBanks:[], pendingPayload:null,
-  balances:{usdc:0, eurc:0}
+  balances:{usdc:0, eurc:0},
+  cfg:null, quote:null, busy:false, timer:null, pollToken:0
 };
 
 // ── Wallet ────────────────────────────────────────────────────
@@ -608,19 +613,22 @@ function updateWalletUI() {
   }
 }
 
+function chainParams() {
+  const n = state.cfg?.network;
+  return { chainId:'0x' + (n?.chain_id || 5042002).toString(16), chainName:n?.name || 'Arc Testnet',
+    nativeCurrency:{name:'USDC', symbol:'USDC', decimals:18},
+    rpcUrls:[n?.rpc_url || 'https://rpc.testnet.arc.io'],
+    blockExplorerUrls:[n?.explorer_url || 'https://explorer.testnet.arc.io'] };
+}
+async function addOrSwitchChain() {
+  const p = chainParams();
+  try { await window.ethereum.request({ method:'wallet_addEthereumChain', params:[p] }); } catch(e) {}
+  try { await window.ethereum.request({ method:'wallet_switchEthereumChain', params:[{chainId:p.chainId}] }); } catch(e) {}
+}
+
 async function connectWallet() {
   if (!window.ethereum) { showToast('Please install MetaMask or Rabby','error'); return; }
-  try {
-    await window.ethereum.request({ method:'wallet_addEthereumChain', params:[{
-      chainId:'0x4CEF52', chainName:'Arc Testnet',
-      nativeCurrency:{name:'USDC',symbol:'USDC',decimals:6},
-      rpcUrls:['https://rpc.testnet.arc.network'],
-      blockExplorerUrls:['https://testnet.arcscan.app']
-    }]});
-  } catch(e) {}
-  try {
-    await window.ethereum.request({ method:'wallet_switchEthereumChain', params:[{chainId:'0x4CEF52'}]});
-  } catch(e) {}
+  await addOrSwitchChain();
   try {
     const accounts = await window.ethereum.request({method:'eth_requestAccounts'});
     state.wallet   = accounts[0];
@@ -637,8 +645,8 @@ async function connectWallet() {
 async function loadBalances() {
   if (!state.wallet || !state.provider) return;
   try {
-    const usdc = new ethers.Contract(USDC_ADDR, ERC20_ABI, state.provider);
-    const eurc = new ethers.Contract(EURC_ADDR, ERC20_ABI, state.provider);
+    const usdc = new ethers.Contract(state.cfg ? state.cfg.tokens.USDC : USDC_ADDR, ERC20_ABI, state.provider);
+    const eurc = new ethers.Contract(state.cfg ? state.cfg.tokens.EURC : EURC_ADDR, ERC20_ABI, state.provider);
     const uBal = await usdc.balanceOf(state.wallet);
     const eBal = await eurc.balanceOf(state.wallet);
     state.balances.usdc = Number(uBal)/1e6;
@@ -759,7 +767,7 @@ function updateSummary() {
   const rate    = country?(token==='USDC'?country.rate_per_usd:country.rate_per_eurc):0;
   const sym     = country?country.symbol:'';
   const cur     = country?country.currency:'';
-  const fee     = amount*0.003;
+  const fee     = amount*((country?.fee_pct ?? 0.3)/100);
   const payout  = (amount-fee)*rate;
 
   document.getElementById('localPreview').textContent = amount>0&&country
@@ -787,7 +795,7 @@ function updateSummary() {
 function isRecipientReady() {
   if (state.method==='bank') {
     return document.getElementById('bankSelect').value &&
-           document.getElementById('accountNumber').value.length>=8 &&
+           document.getElementById('accountNumber').value.replace(/\D/g,'').length>=8 &&
            document.getElementById('accountName').value.length>2;
   }
   return document.getElementById('mobileName').value.length>2 &&
@@ -795,101 +803,233 @@ function isRecipientReady() {
 }
 
 // ── Send Flow ─────────────────────────────────────────────────
-function handleSend() {
-  if (!state.wallet) { connectWallet(); return; }
-  const amount  = parseFloat(document.getElementById('sendAmount').value)||0;
-  const token   = document.getElementById('sendToken')?.value||'USDC';
-  const country = state.selectedCountry;
-  if (!amount||!country) return;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const $ = id => document.getElementById(id);
 
-  // Balance check
-  const bal = token==='USDC'?state.balances.usdc:state.balances.eurc;
-  if (amount>bal) { showToast(`Insufficient ${token}. You have ${bal.toFixed(2)}`,'error'); return; }
-
-  const rate   = token==='USDC'?country.rate_per_usd:country.rate_per_eurc;
-  const fee    = amount*0.003;
-  const payout = (amount-fee)*rate;
-  const sym    = country.symbol;
-  const cur    = country.currency;
-
-  let recipient='', bank='';
-  if (state.method==='bank') {
-    const sel=document.getElementById('bankSelect');
-    recipient=document.getElementById('accountName').value;
-    bank=sel.options[sel.selectedIndex]?.dataset?.name||sel.options[sel.selectedIndex]?.text||'';
-    state.pendingPayload={wallet:state.wallet,amount_usdc:amount,token,country_code:country.code,
-      currency:cur,bank_code:sel.value,bank_name:bank,
-      account_number:document.getElementById('accountNumber').value,
-      account_name:recipient,recipient_name:recipient,method:'bank'};
-  } else {
-    recipient=document.getElementById('mobileName').value;
-    bank='Mobile Money';
-    state.pendingPayload={wallet:state.wallet,amount_usdc:amount,token,country_code:country.code,
-      currency:cur,recipient_name:recipient,
-      phone:document.getElementById('mobilePhone').value,method:'mobile'};
-  }
-
-  document.getElementById('mSend').textContent     =`${amount} ${token}`;
-  document.getElementById('mReceive').textContent  =`${sym}${payout.toLocaleString(undefined,{maximumFractionDigits:0})} ${cur}`;
-  document.getElementById('mCountry').textContent  =`${country.flag} ${country.name}`;
-  document.getElementById('mRate').textContent     =`1 ${token} = ${sym}${parseFloat(rate).toFixed(2)} ${cur}`;
-  document.getElementById('mFee').textContent      =`${fee.toFixed(4)} ${token}`;
-  document.getElementById('mRecipient').textContent=recipient;
-  document.getElementById('mBank').textContent     =bank;
-  document.getElementById('confirmOverlay').classList.add('show');
+function apiError(data, status) {
+  const e = new Error((data && data.error) || 'Request failed');
+  e.code = data && data.code; e.status = status; return e;
 }
 
-function closeConfirm() { document.getElementById('confirmOverlay').classList.remove('show'); }
+async function api(path, body) {
+  const res = await fetch(`${API}${path}`, {
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+  });
+  let data = {}; try { data = await res.json(); } catch(e) {}
+  if (!res.ok) throw apiError(data, res.status);
+  return data;
+}
 
-async function executeSign() {
-  closeConfirm();
-  showStatus('processing');
-  document.getElementById('processingMsg').textContent='Requesting wallet signature...';
-  const amount = state.pendingPayload.amount_usdc;
-  const token  = state.pendingPayload.token||'USDC';
-  const tokenAddr = token==='USDC'?USDC_ADDR:EURC_ADDR;
-  const amountWei = BigInt(Math.floor(amount*1_000_000));
+function friendlyError(e) {
+  const m = (e && (e.reason || e.shortMessage || e.message)) || 'Something went wrong';
+  if (e?.code === 'ACTION_REJECTED' || /user rejected|user denied/i.test(m)) return 'You rejected the request in your wallet.';
+  if (/insufficient funds/i.test(m)) return 'Not enough USDC to cover network fees.';
+  if (m === 'quote_expired') return 'The quote expired before your deposit was sent. Nothing was deposited. Please review the transfer again.';
+  return m.slice(0, 180);
+}
 
+async function loadSendConfig() {
+  try { state.cfg = await (await fetch(`${API}/api/send/config`)).json(); } catch(e) { state.cfg = null; }
+}
+
+async function ensureChain() {
+  const id = state.cfg?.chain_id || 5042002;
+  const hex = '0x' + id.toString(16);
+  const net = await state.provider.getNetwork();
+  if (Number(net.chainId) === id) return;
+  await addOrSwitchChain();
+  state.provider = new ethers.BrowserProvider(window.ethereum);
+  state.signer   = await state.provider.getSigner();
+}
+
+function readRecipient() {
+  if (state.method === 'bank') {
+    const sel = $('bankSelect');
+    return { method:'bank', recipient_name:$('accountName').value.trim(),
+      bank_code:sel.value, bank_name:sel.options[sel.selectedIndex]?.dataset?.name || sel.options[sel.selectedIndex]?.text || '',
+      account_number:$('accountNumber').value.replace(/\D/g,'') };
+  }
+  return { method:'mobile_money', recipient_name:$('mobileName').value.trim(),
+    phone:$('mobilePhone').value.replace(/[\s\-()]/g,'') };
+}
+
+// Step A: sign a one-time challenge, get a locked quote, show it
+async function handleSend() {
+  if (!state.wallet) { connectWallet(); return; }
+  if (state.busy) return;
+  const amountStr = $('sendAmount').value.trim();
+  const amount  = parseFloat(amountStr) || 0;
+  const token   = $('sendToken')?.value || 'USDC';
+  const country = state.selectedCountry;
+  if (!amount || !country) return;
+
+  const bal = token === 'USDC' ? state.balances.usdc : state.balances.eurc;
+  if (amount > bal) { showToast(`Insufficient ${token}. You have ${bal.toFixed(2)}`, 'error'); return; }
+
+  state.busy = true;
+  const btn = $('sendBtn'); btn.disabled = true; btn.textContent = 'Check your wallet to sign…';
   try {
-    const tokenContract = new ethers.Contract(tokenAddr, ERC20_ABI, state.provider);
-
-    document.getElementById('processingMsg').textContent='Verifying balance...';
-    const bal = await tokenContract.balanceOf(state.wallet);
-    if (BigInt(bal)<amountWei) {
-      showStatus('failed');
-      document.getElementById('failedMsg').textContent=`Insufficient ${token} balance.`;
-      return;
-    }
-
-    document.getElementById('processingMsg').textContent='Sign transfer authorization...';
-    const msg = `KudiArc Transfer\nAmount: ${amount} ${token}\nTo: ${state.pendingPayload.recipient_name}\nCountry: ${state.pendingPayload.country_code}\nTime: ${Date.now()}`;
-    const sig = await state.signer.signMessage(msg);
-
-    document.getElementById('processingMsg').textContent='Processing payout...';
-    const res  = await fetch(`${API}/api/send/payout`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({...state.pendingPayload, signature:sig})
+    await ensureChain();
+    const ch = await api('/api/send/challenge', { wallet: state.wallet });
+    const sig = await state.signer.signMessage(ch.message);
+    btn.textContent = 'Getting your quote…';
+    const q = await api('/api/send/quote', {
+      wallet: state.wallet, nonce: ch.nonce, signature: sig, token, amount: amountStr,
+      country_code: country.code, ...readRecipient()
     });
-    const data = await res.json();
+    state.quote = q;
+    showQuote(q, country);
+  } catch (e) {
+    showToast(friendlyError(e), 'error');
+  } finally {
+    state.busy = false; updateSummary();
+  }
+}
 
-    if (data.status&&(data.status.includes('success')||data.status==='pending')) {
-      showStatus('success');
-      const country = state.selectedCountry;
-      document.getElementById('successMsg').textContent =
-        `${country?.symbol||''}${data.payout_amount?.toLocaleString()||''} ${data.currency||''} is being sent to ${state.pendingPayload.recipient_name}. ${data.message||''}`;
-      document.getElementById('successRef').textContent =
-        `Reference: ${data.reference}\nPartner: ${data.partner||'Flutterwave'}`;
-    } else {
-      throw new Error(data.error||'Backend error');
+function showQuote(q, country) {
+  const sym = country.symbol;
+  const r = readRecipient();
+  $('mSend').textContent      = `${q.amount} ${q.token}`;
+  $('mReceive').textContent   = `${sym}${Number(q.payout_amount).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} ${q.currency}`;
+  $('mCountry').textContent   = `${country.flag} ${country.name}`;
+  $('mRate').textContent      = `1 ${q.token} = ${sym}${Number(q.rate).toLocaleString(undefined,{maximumFractionDigits:2})} ${q.currency}`;
+  $('mFeeLabel').textContent  = `Fee (${Number(q.fee_pct).toFixed(2)}%)`;
+  $('mFee').textContent       = `${q.fee} ${q.token}`;
+  $('mRecipient').textContent = r.recipient_name;
+  $('mBank').textContent      = r.method === 'bank' ? (r.bank_name || 'Bank transfer') : 'Mobile Money';
+  $('confirmOverlay').classList.add('show');
+  startCountdown(q.expires_at);
+}
+
+function startCountdown(expiresAt) {
+  stopCountdown();
+  const tick = () => {
+    const left = Math.floor(expiresAt - Date.now()/1000);
+    if (left <= 0) { cancelQuote(); showToast('Quote expired. Review the transfer again.', 'info'); return; }
+    $('mTimer').textContent = `${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`;
+    $('confirmBtn').disabled = left < 30;          // too close to expiry to deposit safely
+  };
+  tick(); state.timer = setInterval(tick, 1000);
+}
+function stopCountdown() { if (state.timer) { clearInterval(state.timer); state.timer = null; } }
+function closeConfirm()  { $('confirmOverlay').classList.remove('show'); }
+function cancelQuote()   { stopCountdown(); closeConfirm(); state.quote = null; }
+
+// Step B: approve the exact amount, deposit into escrow, then ask the server to verify
+async function confirmAndPay() {
+  const q = state.quote; if (!q || state.busy) return;
+  state.busy = true; stopCountdown(); closeConfirm(); showStatus('processing');
+  const say = t => { $('processingMsg').textContent = t; };
+  let deposited = false;
+  try {
+    await ensureChain();
+    const amount = BigInt(q.amount_base);
+    const token  = new ethers.Contract(q.token_address, ERC20_ABI, state.signer);
+    say('Checking your balance…');
+    if (BigInt(await token.balanceOf(state.wallet)) < amount) throw new Error(`Insufficient ${q.token} balance.`);
+
+    if (BigInt(await token.allowance(state.wallet, q.escrow_address)) < amount) {
+      say(`Step 1 of 3: approve ${q.amount} ${q.token} in your wallet…`);
+      const a = await token.approve(q.escrow_address, amount);
+      say('Waiting for approval to confirm…');
+      await a.wait(1);
     }
-  } catch(e) {
-    const msg=e?.reason||e?.message||'Failed';
-    showStatus('failed');
-    document.getElementById('failedMsg').textContent =
-      msg.includes('user rejected')||msg.includes('User denied')
-        ?'You rejected the transaction in your wallet.'
-        :msg.includes('insufficient')?'Insufficient balance'
-        :msg.slice(0,100);
+    if (Date.now()/1000 > q.expires_at - 20) throw new Error('quote_expired');
+
+    say('Step 2 of 3: confirm the deposit in your wallet…');
+    const escrow = new ethers.Contract(q.escrow_address, ESCROW_ABI, state.signer);
+    const tx = await escrow.deposit(q.token_address, amount, q.ref);
+    deposited = true;
+    localStorage.setItem(PENDING_KEY, JSON.stringify({ quote_id:q.quote_id, tx_hash:tx.hash }));
+    say('Waiting for the deposit to confirm…');
+    await tx.wait(1);
+    await finishOrder(q.quote_id, tx.hash);
+  } catch (e) {
+    showFailure(deposited
+      ? 'Your deposit was sent, but we could not finish checking it. Do not send again. Reload this page and we will pick it up.'
+      : friendlyError(e));
+  } finally {
+    state.busy = false; loadBalances();
+  }
+}
+
+// Step C: server verifies the deposit on-chain and starts the payout
+async function finishOrder(quoteId, txHash) {
+  $('processingMsg').textContent = 'Step 3 of 3: verifying your deposit…';
+  let order = null;
+  for (let i = 0; i < 20 && !order; i++) {
+    const res = await fetch(`${API}/api/send/confirm`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ quote_id:quoteId, tx_hash:txHash })
+    });
+    let data = {}; try { data = await res.json(); } catch(e) {}
+    if (res.status === 202) { await sleep(2000); continue; }      // chain node not caught up yet
+    if (!res.ok) { if (res.status === 400 || res.status === 404) localStorage.removeItem(PENDING_KEY); throw apiError(data, res.status); }
+    order = data;
+  }
+  if (!order) throw new Error('We could not verify your deposit yet. Do not send again. Reload this page in a minute.');
+  localStorage.removeItem(PENDING_KEY);
+  renderOutcome(order);
+}
+
+async function resumePending() {
+  let p = null;
+  try { p = JSON.parse(localStorage.getItem(PENDING_KEY) || 'null'); } catch(e) {}
+  if (!p || !p.quote_id || !p.tx_hash) return;
+  showStatus('processing');
+  $('processingMsg').textContent = 'Resuming your last transfer…';
+  try { await finishOrder(p.quote_id, p.tx_hash); } catch(e) { showFailure(friendlyError(e)); }
+}
+
+function money(sym, n) { return `${sym}${Number(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`; }
+
+function setRef(o) {
+  const el = $('successRef');
+  el.textContent = `Order: ${o.quote_id}`;
+  if (o.explorer_url) {
+    el.appendChild(document.createElement('br'));
+    const a = document.createElement('a');
+    a.href = o.explorer_url; a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = 'View deposit on Arc Explorer'; a.style.color = 'var(--jade)';
+    el.appendChild(a);
+  }
+}
+
+function showFailure(msg, title='Transfer Failed') {
+  showStatus('failed');
+  $('failedTitle').textContent = title;
+  $('failedMsg').textContent = msg;
+}
+
+function renderOutcome(o) {
+  const country = state.countries.find(c => c.code === o.country_code);
+  const amt = `${money(country?.symbol || '', o.payout_amount)} ${o.currency}`;
+  if (o.status === 'completed' || o.status === 'payout_pending') {
+    showStatus('success');
+    const done = o.status === 'completed';
+    $('successTitle').textContent = done ? 'Transfer Sent!' : 'Payout Started';
+    $('successMsg').textContent = done
+      ? `${amt} has been sent to ${o.recipient_name}.`
+      : `${amt} is on its way to ${o.recipient_name}. This page updates when it completes.`;
+    setRef(o);
+    if (!done) pollOrder(o.quote_id, ++state.pollToken);
+  } else if (o.status === 'refund_required') {
+    showFailure('We could not complete this payout. Your deposit is safe in escrow and will be refunded to your wallet, usually within 24 to 48 hours. You can also claim it yourself after 72 hours.', 'Payout Not Completed');
+  } else if (o.status === 'payout_unknown') {
+    showFailure('We could not confirm this payout yet. Your funds are safe in escrow and we are checking it. You do not need to send again.', 'Payout Under Review');
+  } else {
+    showFailure('Your order is being processed. Check Transaction History shortly.', 'Processing');
+  }
+}
+
+async function pollOrder(quoteId, token) {
+  for (let i = 0; i < 36; i++) {
+    await sleep(5000);
+    if (token !== state.pollToken) return;                       // user moved on
+    try {
+      const o = await (await fetch(`${API}/api/send/order/${quoteId}`)).json();
+      if (o.status && o.status !== 'payout_pending') { renderOutcome(o); return; }
+    } catch(e) {}
   }
 }
 
@@ -902,11 +1042,13 @@ function showStatus(type) {
 }
 
 function showMain() {
+  state.pollToken++;
   document.getElementById('mainForm').style.display='block';
   ['processingScreen','successScreen','failedScreen'].forEach(id=>document.getElementById(id).classList.remove('show'));
 }
 
 function resetForm() {
+  state.pollToken++; state.quote = null;
   showMain();
   document.getElementById('sendAmount').value='';
   document.getElementById('accountNumber').value='';
@@ -937,8 +1079,9 @@ function showToast(msg, type='info') {
 
 // ── App Init ─────────────────────────────────────────
 (async () => {
-  await Promise.all([loadBanks(), loadCountries()]);
+  await Promise.all([loadBanks(), loadCountries(), loadSendConfig()]);
   updateSummary();
+  resumePending();
 
   if (!window.ethereum) return;
   try {
@@ -999,7 +1142,7 @@ async function loadHistory(wallet) {
       const status = tx.status || '';
       const isMockDone = status === 'mock_success' || status === 'completed';
       const hash = tx.tx_hash
-        ? `<a href="https://testnet.arcscan.app/tx/${tx.tx_hash}" target="_blank" style="color:#27AE74;text-decoration:none">${tx.tx_hash.slice(0,10)}…</a>`
+        ? `<a href="${state.cfg?.network?.explorer_url || 'https://explorer.testnet.arc.io'}/tx/${tx.tx_hash}" target="_blank" style="color:#27AE74;text-decoration:none">${tx.tx_hash.slice(0,10)}…</a>`
         : isMockDone
           ? '<span style="color:#27AE74">Sent ✓ (sandbox)</span>'
           : '<span style="color:#4a6355">pending</span>';

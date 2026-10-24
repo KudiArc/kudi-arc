@@ -1,6 +1,6 @@
 # Kudi Arc — Technical Whitepaper
 
-**Version:** 1.0 &nbsp;|&nbsp; **Date:** March 2026 &nbsp;|&nbsp; **Network:** Arc Testnet (Mainnet: Q3 2026)
+**Version:** 1.1 &nbsp;|&nbsp; **Date:** Updated October 2026 (first published March 2026) &nbsp;|&nbsp; **Network:** Arc Testnet (KudiArc mainnet launch date to be announced)
 
 > Built on Arc Network · Powered by Circle USDC & EURC  
 > [github.com/KudiArc/kudi-arc](https://github.com/KudiArc/kudi-arc) · [@KudiArc](https://twitter.com/KudiArc) · [discord.gg/kudiarc](https://discord.gg/nEJfqrAsqc)
@@ -33,7 +33,7 @@
 
 Kudi Arc is a hybrid on-chain FX desk and remittance engine for Africa — built on Arc Network, the first EVM-compatible blockchain that uses USDC as its native gas token. By combining on-chain stablecoin swaps, off-chain fiat settlement, and tokenized yield, Kudi Arc addresses three structural failures in African financial infrastructure: prohibitive remittance costs, forex scarcity, and the absence of accessible low-risk yield products.
 
-The protocol deploys KudiSwap V2 — a Solidity 0.8.24 smart contract — on Arc Testnet (Chain ID 5042002), enabling USDC ↔ EURC swaps with live FX rates, a 0.30% fee, and multi-layered security controls. A Flask-based backend bridges on-chain activity to licensed fiat payout partners (Bitnob, Flutterwave, Wave) across 10 African countries. USYC integration provides 4.86% APY on idle USDC balances via Circle's tokenized US Treasury product.
+The protocol deploys KudiSwap V2 — a Solidity 0.8.24 smart contract — on Arc Testnet (Chain ID 5042002), enabling USDC ↔ EURC swaps with live FX rates, a 0.30% fee, and multi-layered security controls. A Flask-based backend bridges on-chain activity to licensed fiat payout partners (Flutterwave, with Bitnob and Paystack as fallbacks) across 10 African countries (sandbox payouts on testnet). USYC integration lets users earn a variable yield on idle USDC balances via Circle's tokenized US Treasury product.
 
 This document describes the protocol's architecture, economic model, security design, competitive positioning, risks, and roadmap to Arc Mainnet.
 
@@ -43,13 +43,13 @@ This document describes the protocol's architecture, economic model, security de
 
 ### 1.1 The African Forex Crisis
 
-Nigeria — Africa's largest economy with 220 million people — operates under severe foreign currency restrictions. The Central Bank of Nigeria (CBN) strictly limits USD access for individuals and businesses, creating a parallel market that routinely trades at a **30%+ premium** over the official rate. This forex scarcity forces businesses to absorb currency risk and individuals to pay extortionate rates just to preserve purchasing power.
+Nigeria — Africa's most populous country, with over 220 million people — has restricted access to US dollars for years, and the naira was sharply devalued in 2023–24. FX reforms have since narrowed the gap between the official and parallel market rates: the Central Bank governor reported the premium fell from about 50% in 2022 to under 2% on average in 2025, and in October 2026 the parallel rate was roughly 4% above the official rate. Even so, dollar access remains uneven and businesses and individuals still carry currency risk. That is the problem a stablecoin FX layer addresses.
 
-This is not a Nigeria-only problem. Across sub-Saharan Africa, 14 of 54 countries maintain fixed or managed exchange rate regimes, creating endemic FX friction for cross-border commerce.
+This is not a Nigeria-only problem. Fourteen countries in West and Central Africa use CFA francs, which are pegged to the euro, and many other African countries manage their exchange rates, which adds FX friction to cross-border commerce.
 
 ### 1.2 Remittance Costs
 
-Africa received over **$50 billion** in inbound remittances in 2024 (World Bank). The average cost to send money to sub-Saharan Africa remains **8.5%** — the most expensive corridor in the world. A Nigerian diaspora worker sending $200 home loses $17 in fees. Traditional corridors through Western Union, MoneyGram, and local banks account for the majority of this flow.
+Sub-Saharan Africa received about **$54 billion** in remittances in 2023 (World Bank, Migration and Development Brief 40). It is the most expensive region in the world to send money to: the average cost of sending $200 was **8.46%** in Q3 2025 (World Bank, Remittance Prices Worldwide), against a 6.36% global average. At that rate, sending $200 costs about $17 in fees. Money transfer operators and banks carry a large share of this flow.
 
 The UN Sustainable Development Goal target is 3% by 2030. Current infrastructure is not on track.
 
@@ -71,30 +71,32 @@ Kudi Arc provides three financial primitives on Arc Network, each targeting one 
 
 A USDC ↔ EURC swap contract with live rates sourced from the Open Exchange Rates API, refreshed every 5 minutes.
 
-- **Fee:** 0.30% (vs 2–5% on traditional exchanges and 1–3% on competing crypto desks)
+- **Fee:** 0.30% per swap (fees at other providers vary and are often higher; see the approximate comparison below)
 - **Slippage protection:** `minAmountOut` parameter enforced on-chain
 - **Rate timelock:** 5-minute delay on any rate update — prevents flash manipulation
 - **Rate bounds:** absolute (0.5–2.0 USDC/EURC) and relative (±20% per update) enforced in contract
 
 ### 2.2 Remittance (KudiSend)
 
-A crypto-to-fiat flow that bridges on-chain stablecoin transfers to local bank and mobile wallet payouts:
+A crypto-to-fiat flow that bridges on-chain stablecoin deposits to local bank and mobile-money payouts. On testnet, payouts run in **sandbox mode** (no real money moves).
 
-1. User initiates send with wallet signature (on-chain authorization)
-2. Backend receives signed intent, validates, routes to licensed payout partner
-3. Recipient receives NGN / KES / GHS / XOF / FCFA in their bank account or mobile wallet
-4. Reference tracking on every transaction — both on-chain TX hash and payout partner reference stored
+1. User signs a one-time challenge with their wallet and receives a locked quote (exact fee, rate and payout, valid for 10 minutes)
+2. User approves the token and deposits it into the `KudiSendEscrow` contract against the quote's reference
+3. The backend reads the chain to verify the deposit (wallet, token, exact amount, quote window), then routes the payout to the payout partner
+4. The partner pays the recipient's bank account or mobile wallet; the backend confirms the result with the partner
+5. The owner settles confirmed orders to the treasury, or refunds failed ones. A sender can reclaim an untouched deposit after 72 hours
+6. Both the on-chain deposit transaction and the payout partner reference are stored for every order
 
-Supports **10 African countries** at launch; planned expansion to 20+ on mainnet.
+Supports **10 African countries** (sandbox payouts on testnet). The planned mainnet launch starts with **Nigeria (NGN)**, with other corridors to follow; expansion beyond 10 countries is a plan, not yet scheduled.
 
 ### 2.3 Yield (KudiYield)
 
 Integration with Circle's USYC — a tokenized money market fund backed by short-duration US Treasury Bills, issued directly on Arc Network:
 
 - **Current APY:** 4.86% (variable, tracks Fed Funds Rate)
-- **$1.1163 per USYC — fetched in real time via Hashnote**
+- USYC price is read from the Teller at the time of use (it changes daily)
 - Eligible to non-US institutions (African entities qualify under Circle's allowlist)
-- No lock-up period — withdrawals processed on demand
+- No lock-up period in the KudiYield contract. Withdrawals depend on USYC redemption being available, and the owner can pause the contract
 - Earnings displayed in NGN equivalent to provide local context
 
 ---
@@ -103,21 +105,23 @@ Integration with Circle's USYC — a tokenized money market fund backed by short
 
 Kudi Arc occupies a distinct position: a crypto-native FX and remittance protocol built specifically for Africa, on infrastructure (Arc) that removes the gas complexity that has historically prevented adoption.
 
-| Provider | Type | Fee | Crypto-Native | Yield | On-Chain Audit | Africa-First |
+| Provider | Type | Fee | Crypto-Native | Yield | On-chain verifiable | Africa-First |
 |----------|------|-----|---------------|-------|----------------|--------------|
-| **Kudi Arc** | Hybrid DeFi/CeFi | **0.30%** | ✅ USDC-only | ✅ 4.86% APY | ✅ Arcscan | ✅ |
+| **Kudi Arc** | Hybrid DeFi/CeFi | **0.30%** swap · **0.8–4.5%** send | ✅ USDC/EURC | ✅ via USYC (variable) | ✅ Arc explorer | ✅ |
 | Yellow Card | Crypto Exchange | 1.5–3% | ✅ Multi-token | ❌ | ❌ | ✅ |
 | Chipper Cash | Mobile Money | Free–2% | ❌ Fiat-only | ❌ | ❌ | ✅ |
 | Grey Finance | Stablecoin Wallet | 1% | ✅ USDC/USDT | ❌ | ❌ | ✅ |
 | Western Union | Traditional | 5–9% | ❌ Fiat-only | ❌ | ❌ | ❌ |
 | Lemfi | Neobank | 0.5–1% | ❌ Fiat-only | ❌ | ❌ | Partial |
 
+*Competitor figures are approximate, taken from public information at the time of first publication (March 2026), and may have changed. Verify before relying on them.*
+
 **Key differentiators:**
 
-- Only USDC-as-gas chain (Arc) — zero gas friction for non-crypto users
-- Only protocol offering on-chain FX swap + remittance + yield in a single interface
-- All swap logic is publicly verifiable on Arcscan — no black-box rate manipulation
-- 0.30% fee is among the lowest in the market for stablecoin FX
+- Built on Arc, where gas is paid in USDC, so users do not need to buy a separate gas token
+- Combines on-chain FX swap, remittance and yield in a single interface
+- All swap logic is publicly verifiable on the Arc explorer — no black-box rate manipulation
+- 0.30% swap fee is low compared with the providers in the table above (approximate; see the note)
 
 ---
 
@@ -130,7 +134,7 @@ Kudi Arc occupies a distinct position: a crypto-native FX and remittance protoco
 | **Address** | `0x8a10D0e61201000B5456EC725165892B08832C5f` |
 | **Compiler** | Solidity 0.8.24 |
 | **Network** | Arc Testnet (Chain 5042002) |
-| **Status** | ✅ Verified on Arcscan |
+| **Status** | ✅ Verified on the Arc explorer |
 
 #### Core Functions
 
@@ -169,9 +173,9 @@ Kudi Arc is deliberately custodial, not a trustless AMM. This is a considered de
 
 **Transparency measures that compensate for custodial nature:**
 
-- Contract source code publicly verified on Arcscan
+- Contract source code publicly verified on the Arc explorer
 - All admin actions emit on-chain events with timestamps
-- 5–24 hour timelocks give users advance warning of any owner action
+- 5-minute (rate) and 24-hour (liquidity withdrawal) timelocks give users advance warning of those owner actions
 - Rate bounds (absolute and relative) prevent extreme manipulation even by the owner
 
 The roadmap toward progressive decentralization is outlined in [Section 10](#10-governance--upgrade-path).
@@ -186,10 +190,12 @@ The Flask backend (Python 3.10) bridges on-chain activity to off-chain payout in
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/rates` | GET | Live USD/EUR/NGN rates — refreshed every 2 minutes |
+| `/api/rates` | GET | Live USD/EUR/NGN rates — refreshed every 5 minutes |
 | `/api/countries` | GET | 10-country payout configs with live local currency rates |
 | `/api/banks` | GET | Nigerian bank list (26 banks) for account validation |
-| `/api/send/payout` | POST | Universal payout endpoint — routes to correct partner per country |
+| `/api/send/challenge` · `/api/send/quote` | POST | Signed challenge, then a locked quote (fee, rate, payout) |
+| `/api/send/confirm` | POST | Verifies the escrow deposit on-chain, then routes the payout to the correct partner per country |
+| `/api/send/order/{id}` | GET | Order status |
 | `/api/swap/record` | POST | Records on-chain swap event to local database |
 | `/api/history/:wallet` | GET | Per-wallet transaction history (swaps + sends) |
 | `/api/yield/stats` | GET | USYC APY and pool data from Circle |
@@ -230,7 +236,7 @@ CREATE INDEX idx_transactions_wallet ON transactions(wallet);
 | Server | Oracle Cloud VM | Dedicated VM |
 | Database | SQLite | PostgreSQL 15 |
 | Cache | In-memory | Redis |
-| WSGI | Gunicorn (4 workers) | Gunicorn (8+ workers) |
+| WSGI | Gunicorn (2 workers) | Gunicorn (8+ workers) |
 | Web server | Nginx | Nginx + Certbot SSL |
 | Process mgr | systemd | systemd + monitoring |
 
@@ -238,38 +244,42 @@ CREATE INDEX idx_transactions_wallet ON transactions(wallet);
 
 ## 6. Fiat Settlement Layer
 
-This is the highest-risk component of the protocol. Fiat settlement depends on licensed third-party payout partners — Bitnob, Flutterwave, and Wave.
+This is the highest-risk component of the protocol. Fiat settlement depends on third-party payout partners: Flutterwave (primary), with Bitnob and Paystack as fallbacks. **On testnet all payouts run in sandbox mode.**
 
 ### 6.1 Transaction Flow
 
-1. User connects wallet and inputs: destination country, recipient bank details, amount in USDC/EURC
-2. User signs a message with their wallet (EIP-191 authorization)
-3. Backend validates: signature, amount within daily limit, partner availability
-4. Backend locks the user's USDC by initiating the on-chain transfer
-5. Backend calls the relevant partner API (Bitnob for NGN, Flutterwave for KES/GHS/ZAR, Wave for XOF/XAF)
-6. Partner processes payout to recipient's bank account or mobile wallet
-7. Backend receives webhook confirmation and updates transaction status
-8. User sees confirmed status with partner reference number
+1. User connects wallet and enters destination country, recipient details and amount (USDC or EURC)
+2. User signs a one-time challenge (EIP-191) and the backend returns a locked quote
+3. User approves the token and deposits into the `KudiSendEscrow` contract
+4. Backend verifies the deposit on-chain (transaction succeeded, sent to the escrow, matching quote reference, wallet, token and exact amount, made within the quote window)
+5. Backend claims the order exactly once and calls the payout partner (idempotent reference per order)
+6. Partner pays the recipient's bank account or mobile wallet
+7. Partner webhook arrives; the backend authenticates it, re-checks the result with the partner, and updates the order
+8. Owner settles completed orders to the treasury, or refunds failed ones
 
 ### 6.2 Partner Coverage
 
-| Partner | Countries | Payout Methods | Status |
-|---------|-----------|----------------|--------|
-| Bitnob | Nigeria (NGN) | Bank transfer, mobile money | ✅ Live (testnet) |
-| Flutterwave | Kenya, Ghana, South Africa, Tanzania, Nigeria, Uganda, Rwanda | Senegal, Côte d'Ivoire, Cameroon | Bank Transfer, M-Pesa, MTN MoMo, Orange Money | ✅ Live (testnet) |
-| Paystack | Nigeria (NGN) | Bank transfer (fallback) | ✅ Live (integrated) |
+| Partner | Countries | Role | Status |
+|---------|-----------|------|--------|
+| Flutterwave | All 10 corridors | Primary | Integrated (sandbox mode) |
+| Bitnob | Nigeria, Ghana, Kenya | Fallback | Integrated (sandbox mode); webhook scheme not yet confirmed against its official documentation |
+| Paystack | Nigeria, Ghana, Kenya, South Africa | Fallback | Integrated (sandbox mode) |
+
+Payout methods are bank transfer or mobile money. Wave is not integrated.
 
 ### 6.3 Failure Modes & Recovery
 
-| Failure | Handling |
-|---------|----------|
-| Partner timeout (>30s) | TX flagged `pending` — manual resolution within 2 hours |
-| Bank rejection (invalid account) | USDC returned to user wallet within 10 minutes |
-| Partial payout | Backend detects mismatch via webhook, escalates to manual review |
-| Partner downtime | Country routes auto-disabled — users see "temporarily unavailable" |
+| Situation | Handling |
+|-----------|----------|
+| Partner definitely rejects the transfer (e.g. invalid account) | Order becomes `refund_required`; the owner refunds the deposit to the sender |
+| Partner timeout or server error (outcome unknown) | No second partner is tried (to avoid paying twice). Order becomes `payout_unknown`; the owner checks the partner dashboard and records the result |
+| Deposit arrives after the quote expired | Order becomes `refund_required` |
+| Partner webhook reports a non-final status | Ignored. Only final results change an order |
+| Forged or unauthenticated webhook | Rejected. Webhooks are refused entirely until their secrets are configured |
+| Owner takes no action | The sender can call `claimRefund` after 72 hours |
 
-**SLA (testnet):** Best-effort 2-hour resolution.  
-**SLA (mainnet target):** Automated retry + 30-minute max resolution for reversible failures.
+**Testnet:** best-effort, aiming to settle or refund every order within 24 to 48 hours.
+**Mainnet target:** faster automated retry and resolution for reversible failures (not yet built).
 
 ### 6.4 KYC & Compliance
 
@@ -281,18 +291,18 @@ At testnet stage, KYC is minimal (wallet address + phone number for mobile payou
 
 | Country | Currency | Symbol | Payout Methods | Partner |
 |---------|----------|--------|----------------|---------|
-| 🇳🇬 Nigeria | NGN | ₦ | Bank transfer, mobile money | Bitnob |
-| 🇰🇪 Kenya | KES | KSh | Bank transfer, M-Pesa | Flutterwave |
-| 🇬🇭 Ghana | GHS | GH₵ | Bank transfer, MTN MoMo | Flutterwave |
-| 🇿🇦 South Africa | ZAR | R | Bank transfer (EFT) | Flutterwave |
-| 🇸🇳 Senegal | XOF | CFA | Wave wallet, Orange Money | Wave |
-| 🇨🇮 Côte d'Ivoire | XOF | CFA | Wave wallet, MTN MoMo | Wave |
-| 🇨🇲 Cameroon | XAF | FCFA | Wave wallet, Orange Money | Wave |
-| 🇹🇿 Tanzania | TZS | TSh | Bank transfer, M-Pesa | Flutterwave |
-| 🇺🇬 Uganda | UGX | USh | Bank transfer, MTN MoMo | Flutterwave |
-| 🇷🇼 Rwanda | RWF | RF | Bank transfer, MTN MoMo | Flutterwave |
+| 🇳🇬 Nigeria | NGN | ₦ | Bank transfer, mobile money | Flutterwave |
+| 🇰🇪 Kenya | KES | KSh | Bank transfer, mobile money | Flutterwave |
+| 🇬🇭 Ghana | GHS | GH₵ | Bank transfer, mobile money | Flutterwave |
+| 🇿🇦 South Africa | ZAR | R | Bank transfer | Flutterwave |
+| 🇸🇳 Senegal | XOF | CFA | Mobile money | Flutterwave |
+| 🇨🇮 Côte d'Ivoire | XOF | CFA | Mobile money | Flutterwave |
+| 🇨🇲 Cameroon | XAF | FCFA | Mobile money | Flutterwave |
+| 🇹🇿 Tanzania | TZS | TSh | Bank transfer, mobile money | Flutterwave |
+| 🇺🇬 Uganda | UGX | USh | Bank transfer, mobile money | Flutterwave |
+| 🇷🇼 Rwanda | RWF | RF | Bank transfer, mobile money | Flutterwave |
 
-FX data covers NGN, KES, GHS, ZAR, XOF, XAF, TZS, UGX, and RWF — 9 currencies refreshed every 5 minutes from the Open Exchange Rates API. Mainnet expansion target: 20+ countries.
+FX data covers NGN, KES, GHS, ZAR, XOF, XAF, TZS, UGX, and RWF — 9 currencies refreshed every 5 minutes from the Open Exchange Rates API. Expansion to more countries is a plan, not yet scheduled.
 
 ---
 
@@ -304,7 +314,7 @@ FX data covers NGN, KES, GHS, ZAR, XOF, XAF, TZS, UGX, and RWF — 9 currencies 
 |--------|-----|--------------|-----------|
 | USDC → EURC Swap | 0.30% | USDC | Protocol treasury |
 | EURC → USDC Swap | 0.30% | EURC | Protocol treasury |
-| Remittance send | 0.30% | USDC | Protocol treasury + partner |
+| Remittance send | 0.8%–4.5% by corridor (a minimum fee floor, 0.3% by default, is configurable) | Sent token | Protocol treasury |
 | USYC deposit | 0% | — | — |
 | USYC withdrawal | 0% | — | — |
 
@@ -327,15 +337,15 @@ A future governance token (KUDI) is under consideration for Phase 7+ to facilita
 | Conservative | $1M (0.1% Nigeria corridor) | $36,000/year |
 | Growth | $33M (1% Nigeria + 0.5% others) | $1.2M/year |
 
-> These figures are illustrative projections only, not forecasts.
+> These figures are illustrative projections only, not forecasts. They assume a 0.30% fee on all volume; remittance corridors currently charge more (0.8%–4.5%).
 
 ---
 
 ## 9. Security Model
 
-### 9.1 Audit Results
+### 9.1 Automated Scan Results
 
-KudiSwap V2 was audited via SolidityScan (automated static analysis, March 2026):
+KudiSwap V2 was scanned with SolidityScan (automated static analysis, March 2026). **This is not a manual audit.** KudiSendEscrow (added in v2.0) has not been through an external scan or audit; it has 22 Foundry tests including a fuzz test.
 
 | Metric | Result |
 |--------|--------|
@@ -344,7 +354,7 @@ KudiSwap V2 was audited via SolidityScan (automated static analysis, March 2026)
 | Critical Vulnerabilities | **0** |
 | High Vulnerabilities | **0** |
 
-> **Note on the 60.58 score:** SolidityScan's methodology penalises custodial design patterns — specifically owner-controlled rate updates and liquidity management. These patterns are intentional and bounded. The **97/100 Threat Score** is the relevant vulnerability metric. All owner-callable functions have explicit timelocks, bounds, and emit public events. A third-party manual audit is planned for Q2 2026 before mainnet deployment.
+> **Note on the 60.58 score:** SolidityScan's methodology penalises custodial design patterns — specifically owner-controlled rate updates and liquidity management. These patterns are intentional and bounded. The **97/100 Threat Score** is the relevant vulnerability metric. All owner-callable functions have explicit timelocks, bounds, and emit public events. A third-party manual audit is planned before mainnet launch (date to be set).
 
 ### 9.2 Known Limitations
 
@@ -352,25 +362,25 @@ KudiSwap V2 was audited via SolidityScan (automated static analysis, March 2026)
 |-----------|--------|------------|
 | Centralized oracle | FX rates from Open Exchange Rates API | ±20% bounds limit exposure; Chainlink in Phase 8 |
 | Custodial rate control | Owner can update rates within bounds + 5-min delay | Timelocked — users have 5 min to exit |
-| Single-key ownership | Single EOA owner on testnet | 3-of-5 multisig before mainnet (Phase 6) |
-| No manual audit | Automated tooling only | Third-party audit planned Q2 2026 |
+| Single-key ownership | Single EOA owner on testnet | Planned: multisig before mainnet (Phase 6) |
+| No manual audit | Automated tooling and tests only | Third-party audit planned before mainnet (date to be set) |
 | SQLite database | Not suitable for production scale | PostgreSQL migration pre-mainnet |
 
 ---
 
 ## 10. Governance & Upgrade Path
 
-Kudi Arc launches as a centralized protocol with a clear, time-bound path toward progressive decentralization — mirroring the model used by Uniswap, Aave, and Compound.
+Kudi Arc launches as a centralized protocol with a planned path toward progressive decentralization. The stages below are intentions, not commitments.
 
 | Phase | Governance Model | Timeline |
 |-------|-----------------|----------|
 | Testnet (Now) | Single EOA owner — full control with timelocked actions | Current |
-| Mainnet Launch (Phase 6) | 3-of-5 multisig (Gnosis Safe) — team + 2 external signers | Q3 2026 |
-| V3 (Phase 9) | Chainlink oracle anchors rates — owner can no longer set arbitrary rates | Q4 2026 |
-| V4 (Phase 7+) | AMM formula replaces manual rates — owner rate control removed | 2027 |
+| Mainnet Launch (Phase 6) | Planned: 3-of-5 multisig (team + 2 external signers) | Before mainnet launch (date to be set) |
+| V3 (Phase 9) | Planned: Chainlink oracle anchors rates — owner can no longer set arbitrary rates | Indicative: Q4 2026 |
+| V4 (Phase 7+) | Planned: AMM formula replaces manual rates — owner rate control removed | Indicative: 2027 |
 | DAO (Future) | KUDI governance token — community fee votes, LP governance | TBD |
 
-**Admin transparency:** Every privileged action (rate update, fee change, liquidity withdrawal) emits an on-chain event. Users can monitor the contract's event log on Arcscan at any time.
+**Admin transparency:** Every privileged action (rate update, fee change, liquidity withdrawal) emits an on-chain event. Users can monitor the contract's event log on the Arc explorer at any time.
 
 ---
 
@@ -378,66 +388,69 @@ Kudi Arc launches as a centralized protocol with a clear, time-bound path toward
 
 | Market Segment | Size | Kudi Arc Relevance |
 |---------------|------|-------------------|
-| Sub-Saharan Africa inbound remittances | $54B/year (World Bank 2024) | Primary: KudiSend |
-| Nigeria inbound remittances | $20B+/year | Primary: KudiSend (NGN corridor) |
-| Africa stablecoin transaction volume | $180B+/year (Chainalysis 2024) | Primary: KudiSwap |
-| Africa crypto user base | 53M+ users (Nigeria #3 globally) | Addressable user base |
-| Tokenized T-Bill market (USYC) | $500M+ AUM and growing | KudiYield integration |
-| Africa FX parallel market | $50B+/year | KudiSwap primary target |
+| Sub-Saharan Africa inbound remittances | About $54B in 2023 (World Bank) | Primary: KudiSend |
+| Nigeria inbound remittances | About $19.5B in 2023 (World Bank) | Primary: KudiSend (NGN corridor) |
+| Sub-Saharan Africa on-chain crypto value received | $205B between July 2024 and June 2025, up 52% year on year. Stablecoins are about 43% of transaction volume (Chainalysis, 2025 Geography of Crypto report) | KudiSwap |
+| Nigeria on-chain crypto value received | $92.1B between July 2024 and June 2025 (Chainalysis) | KudiSwap and KudiSend |
+| Tokenized US Treasury products (USYC) | Growing market (no figure cited) | KudiYield integration |
 
-**Conservative scenario:** Capture 0.1% of Nigeria's $20B remittance corridor = $20M annual volume = $60,000/year in fees.
+*These are total market figures from the cited sources, checked in October 2026. They describe the market, not Kudi Arc's own usage. Earlier versions of this document cited a "$180B+ Africa stablecoin volume" figure and several unsourced market-size rows; these were removed because they could not be supported.*
 
-**Growth scenario:** 1% of Nigeria + 0.5% of remaining 9 countries = ~$400M annual volume = $1.2M/year in fees.
+**Conservative scenario (illustrative):** Capture 0.1% of Nigeria's roughly $19.5B in inbound remittances = about $19.5M annual volume = about $58,500/year in fees at a 0.30% fee (about $156,000 at the 0.8% NGN corridor fee).
+
+**Growth scenario (illustrative):** 1% of Nigeria + 0.5% of the remaining 9 countries = ~$400M annual volume = ~$1.2M/year in fees at a 0.30% fee.
 
 ---
 
 ## 12. Roadmap
 
-### Testnet — Q1-Q2 2026 (Current)
+> Items below marked "Planned" are intentions, not commitments. Dates are indicative and may change.
+
+### Testnet — 2026 (Current)
 
 | Milestone | Status |
 |-----------|--------|
-| KudiSwap V2 deployed & verified on Arcscan | ✅ Complete |
-| 10-country remittance support (KudiSend) | ✅ Complete |
+| KudiSwap V2 deployed & verified on the Arc explorer | ✅ Complete |
+| 10-country remittance support (KudiSend, sandbox payouts) | ✅ Complete |
 | USYC yield integration (KudiYield) | ✅ Complete |
 | Transaction history per wallet | ✅ Complete |
-| SolidityScan security audit | ✅ Complete |
-| Bitnob API integration (NGN live) | in progress |
-| Flutterwave API integration | ✅️ Complete |
-| Paystack API integration | ✅ Complete|
-| Circle USYC allowlist approval | ✅️ Complete |
+| SolidityScan automated scan | ✅ Complete |
+| Flutterwave, Bitnob and Paystack integrations | ✅ Integrated (sandbox mode) |
+| Circle USYC allowlist approval | ✅ Complete |
+| Escrow-backed KudiSend, owner-signed admin dashboard, authenticated and verified webhooks, on-chain verified swap records (v2.0, October 2026) | ✅ Complete |
+| SSL on kudiarc.xyz | ✅ In place |
 | User beta testing program | ⏳ In Progress |
 
-### Mainnet — Q3 2026
+### Mainnet — date to be announced
 
-| Milestone | Target |
+| Milestone | Status |
 |-----------|--------|
-| Arc Mainnet deployment | Q3 2026 |
-| Real NGN/KES/GHS/XOF live payouts | Q3 2026 |
-| SSL + CDN | Q3 2026 |
-| PostgreSQL migration (replace SQLite) | Q3 2026 |
-| 3-of-5 multisig ownership transfer | Q3 2026 |
-| Third-party smart contract audit | Q2 2026 (pre-mainnet) |
-| 20-country expansion | Q4 2026 |
+| KudiArc mainnet deployment (Arc Mainnet itself is live since 16 Sept 2026) | Planned |
+| Real payouts (`SEND_MODE=live`), starting with Nigeria (NGN) after partner sandbox testing and webhook setup | Planned |
+| PostgreSQL migration (replace SQLite) | Planned |
+| Multisig ownership (3-of-5) | Planned |
+| Third-party smart contract audit | Planned (before mainnet) |
+| CDN | Planned |
+| Remaining corridors after Nigeria, then expansion beyond 10 countries | Planned |
 
-### V3 — Q4 2026
+### V3 — Indicative: late 2026
 
 | Milestone | Target |
 |-----------|--------|
 | Chainlink oracle integration | Q4 2026 |
 | AMM model (x*y=k) replacing manual rate setting | Q4 2026 |
 | Open liquidity provision + LP token system | Q4 2026 |
-| (CCTP) Multi-chain deployment (Base, Stellar, Ethereum, Solana) | Q3 2026 |
+| (CCTP) Multi-chain deployment (Base, Stellar, Ethereum, Solana) | Planned |
 | Paymaster | Q4 2026 |
 
-### V4 — 2027
+### V4 — Indicative: 2027
 
 | Milestone | Target |
 |-----------|--------|
 | Mobile app (React Native) — iOS & Android | Q1 2027 |
 | KUDI governance token consideration | Q2 2027 |
 | DAO governance framework | Q3 2027 |
-| Expand to 30+ African countries | 2027 |
+| Expand to more African countries | Planned |
 | Circle Programmable Wallets | Q1 2027 |
 
 ---
@@ -485,7 +498,7 @@ The USDC-as-gas design is not a minor convenience — it is the foundational unl
 |------|----------|-----------|--------|------------|
 | CBN regulatory action against crypto-to-NGN offramp | Regulatory | Medium | High | Monitor VASP framework; partner with CBN-licensed Bitnob; structure as stablecoin bridge |
 | Arc Mainnet delayed or cancelled | Infrastructure | Low | High | Contracts are EVM-compatible; can redeploy to Base or Polygon with minor config changes |
-| Payout partner (Bitnob/Flutterwave) API failure | Operational | Medium | Medium | Multi-partner routing; fallback to manual resolution; automated country disable |
+| Payout partner (Bitnob/Flutterwave) API failure | Operational | Medium | Medium | Multi-partner routing; unknown outcomes are held for manual resolution (no automatic country disable yet) |
 | FX oracle manipulation (Open Exchange Rates) | Technical | Low | Medium | ±20% rate bounds in contract; Chainlink integration in Phase 8 |
 | Smart contract exploit | Technical | Low | High | Reentrancy guards, timelocks, SafeERC20; third-party audit pre-mainnet; bug bounty planned |
 | Circle USYC allowlist rejection | Business | Medium | Low | USYC is additive — swap and remittance features are fully independent |

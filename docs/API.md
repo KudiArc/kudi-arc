@@ -1,54 +1,77 @@
 # Kudi Arc — API Reference
 
 **Base URL (Testnet):** `https://kudiarc.xyz`  
-**Base URL (Mainnet):** `https://api.kudiarc.xyz` *(Q3 2026)*  
+**Base URL (Mainnet):** not available yet (date to be announced)  
 **Version:** v1  
 **Protocol:** HTTP/REST  
 **Response Format:** JSON  
 
-> ⚠️ **Testnet Notice:** No real funds are moved on testnet. The `status` field will be `mock_success` until mainnet launch.
+> ⚠️ **Testnet Notice:** Payouts run in sandbox mode: orders complete immediately with provider `sandbox` and no real money moves. Real payouts are planned for mainnet.
 
 ---
 
 ## Authentication
 
-Currently, the API is public and requires no API key. Wallet-level authorization is enforced via **EIP-191 message signatures** on write endpoints (`/api/send/payout`).
+Read endpoints (rates, countries, banks, yield, history, health) are public.
 
-Mainnet will introduce rate limiting and optional API key authentication for partner integrations.
+**Send (KudiSend)** uses a short-lived wallet challenge. The app requests a one-time message (`POST /api/send/challenge`), the user signs it (EIP-191), and the signed challenge is exchanged for a locked quote. A challenge works once and expires after 5 minutes.
+
+**Admin endpoints (`/api/admin/*`)** accept only the owner wallet. Every request carries a single-use nonce and a signature over that exact request:
+
+1. `GET /api/admin/challenge` returns `{ nonce, expires_at, domain, chain_id }`
+2. Build this message and sign it (EIP-191) with the owner wallet:
+
+```
+KudiArc admin request
+Domain: <domain>
+Chain: <chain_id>
+Method: <HTTP method>
+Path: <path including query string>
+Body: <sha256 hex of the raw request body, or of an empty string for GET>
+Nonce: <nonce>
+Expires: <expires_at>
+```
+
+3. Send the request with headers `X-Admin-Nonce` and `X-Admin-Signature`.
+
+The nonce is consumed on first use, and a signature is valid only for that exact method, path, query and body. If `OWNER_ADDRESS` is not configured, admin endpoints return `503`.
+
+Rate limiting and optional API key authentication for partner integrations are planned for mainnet.
 
 ---
 
 ## Rate Limiting
 
-| Tier | Limit |
-|------|-------|
-| Public (testnet) | 60 requests/minute per IP |
-| Partner (mainnet) | 300 requests/minute per API key |
+General per-IP rate limiting is **not implemented yet** (planned for mainnet). Current protections:
 
-Exceeded requests return `429 Too Many Requests`.
-
----
+- At most 10 open send challenges per wallet and 50 open admin nonces (excess returns `429`)
+- Request bodies are limited to 1 MB
 
 ## Error Format
 
-All errors follow a consistent structure:
+Errors from the send and admin endpoints use a short code:
 
 ```json
 {
-  "error": "validation_failed",
-  "message": "amount_usdc must be greater than 0",
-  "code": 400
+  "error": "Amount must be between 10 and 50 USDC",
+  "code": "amount_out_of_range"
 }
 ```
 
+Older read endpoints return `{ "error": "message" }`.
+
 | HTTP Code | Meaning |
 |-----------|---------|
-| `400` | Bad request — invalid or missing parameters |
-| `404` | Resource not found (e.g. unknown wallet) |
-| `422` | Unprocessable — signature invalid or amount out of range |
-| `429` | Rate limit exceeded |
-| `500` | Internal server error — report to team |
-| `503` | Payout partner temporarily unavailable |
+| `400` | Bad request: invalid or missing parameters |
+| `401` | Unauthorized: bad, used or expired challenge/signature, or not the owner |
+| `404` | Resource not found |
+| `409` | Conflict: order already processed |
+| `410` | Endpoint retired (`/api/send/payout`) |
+| `429` | Too many open challenges |
+| `500` | Internal server error |
+| `503` | Temporarily unavailable (maintenance, chain lookup failed, or not configured) |
+
+---
 
 ---
 
@@ -161,7 +184,7 @@ Returns all supported payout countries with live local currency rates and partne
 
 #### `GET /api/banks`
 
-Returns the list of Nigerian banks supported for NGN payouts, including bank codes required by the `/api/send/payout` endpoint.
+Returns the list of Nigerian banks supported for NGN payouts, including bank codes required by the `/api/send/quote` endpoint.
 
 **Response `200 OK`**
 ```json
@@ -180,103 +203,108 @@ Returns the list of Nigerian banks supported for NGN payouts, including bank cod
 }
 ```
 
-> **Note:** `bank_code` from this response is required as input to `POST /api/send/payout` for Nigerian recipients.
+> **Note:** `bank_code` from this response is required as input to `POST /api/send/quote` for Nigerian recipients.
 
 ---
 
 ### Send / Remittance
 
-#### `POST /api/send/payout`
+KudiSend is a four-step flow: **challenge → quote → deposit → confirm.**
 
-Initiates a crypto-to-fiat remittance. The user must sign a message with their wallet before calling this endpoint — the `signature` field proves authorization without an on-chain transaction at this step.
+#### `GET /api/send/config`
 
-**Request Body**
+Public settings the app needs: network, escrow address, token addresses, limits.
 
 ```json
 {
-  "wallet": "0x7B77...",
-  "amount_usdc": 10,
-  "token": "USDC",
-  "country_code": "NG",
-  "currency": "NGN",
-  "recipient_name": "John Doe",
-  "account_number": "0123456789",
-  "bank_name": "GTBank",
-  "bank_code": "058",
-  "signature": "0x...",
-  "approve_tx": "0x...",
-  "method": "bank"
+  "chain_id": 5042002,
+  "escrow_address": "0xd2e4eBA288FDcAef6Cec0095C763483DEfA2e010",
+  "network": { "name": "Arc Testnet", "chain_id": 5042002, "rpc_url": "https://rpc.testnet.arc.io",
+               "explorer_url": "https://explorer.testnet.arc.io", "native_symbol": "USDC", "native_decimals": 18 },
+  "tokens": { "USDC": "0x3600…0000", "EURC": "0x89B5…D72a" },
+  "mode": "mock", "quote_ttl": 600, "min_amount": "10", "max_amount": "50"
 }
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `wallet` | string | ✅ | Sender's EVM wallet address |
-| `amount_usdc` | float | ✅ | Amount to send in USDC (min: 1.0) |
-| `token` | string | ✅ | `"USDC"` or `"EURC"` |
-| `country_code` | string | ✅ | ISO 3166-1 alpha-2 (e.g. `"NG"`) |
-| `currency` | string | ✅ | Target fiat currency (e.g. `"NGN"`) |
-| `recipient_name` | string | ✅ | Full name of recipient |
-| `account_number` | string | ✅ | Bank account number or mobile wallet ID |
-| `bank_name` | string | ✅ | Human-readable bank name |
-| `bank_code` | string | ✅ | Bank code from `/api/banks` |
-| `signature` | string | ✅ | EIP-191 signed message from sender wallet |
-| `approve_tx` | string | ✅ | On-chain `approve()` transaction hash |
-| `method` | string | ✅ | `"bank"` or `"mobile_money"` |
+#### `POST /api/send/challenge`
+
+Request: `{ "wallet": "0x…" }`. Response: `{ "nonce", "message", "expires_at" }`. The user signs `message` with their wallet. At most 10 open challenges per wallet.
+
+#### `POST /api/send/quote`
+
+Exchanges a signed challenge for a locked quote.
+
+```json
+{
+  "wallet": "0x…", "nonce": "<from challenge>", "signature": "0x…",
+  "token": "USDC", "amount": "20",
+  "country_code": "NG", "method": "bank",
+  "recipient_name": "Ada Obi", "account_number": "0123456789", "bank_code": "058", "bank_name": "GTBank"
+}
+```
+
+For `method: "mobile_money"` send `phone` instead of the bank fields. `amount` is a decimal string with at most 6 decimal places.
 
 **Response `200 OK`**
+
 ```json
 {
-  "status": "mock_success",
-  "reference": "KUDI-NGN-ABCD1234",
-  "currency": "NGN",
-  "payout_amount": 13795.2,
-  "fee_usdc": 0.03,
-  "rate_used": 1382.5,
-  "message": "[SANDBOX] ₦13,795 would be sent to John Doe",
-  "partner_reference": "BNB-TX-9988776655",
-  "estimated_arrival": "1-2 business days"
+  "quote_id": "9f2c…", "ref": "0x…", "escrow_address": "0xd2e4…", "chain_id": 5042002,
+  "token": "USDC", "token_address": "0x3600…0000",
+  "amount": "20", "amount_base": "20000000", "fee": "0.16", "fee_pct": 0.8, "rate": "1500",
+  "payout_amount": "29760.00", "currency": "NGN", "expires_at": 1790000600, "expires_in": 600
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `status` | string | `mock_success` (testnet) / `success` / `pending` / `failed` |
-| `reference` | string | Kudi Arc internal reference ID — save this |
-| `payout_amount` | float | Amount recipient will receive in local currency |
-| `fee_usdc` | float | Protocol fee deducted (0.30% of `amount_usdc`) |
-| `rate_used` | float | FX rate applied at time of transaction |
-| `partner_reference` | string | Payout partner's own reference ID |
-| `estimated_arrival` | string | Expected delivery time for the payout |
+The fee is the higher of the country fee and the platform's minimum fee. `payout_amount` is rounded down.
 
-**Error Responses**
+| Error code | Meaning |
+|------------|---------|
+| `bad_challenge` / `bad_signature` (401) | Challenge unknown, used, expired, or signed by another wallet |
+| `amount_out_of_range` (400) | Outside the minimum or maximum |
+| `bad_amount`, `bad_token`, `bad_country`, `bad_recipient`, `bad_method` (400) | Invalid input |
+| `rate_unavailable`, `chain_error`, `maintenance` (503) | Try again shortly |
+| `escrow_not_configured`, `payouts_not_configured` (503) | Sending is not available yet |
 
-```json
-{ "error": "invalid_signature",   "message": "Wallet signature could not be verified", "code": 422 }
-{ "error": "country_unavailable", "message": "NGN corridor temporarily unavailable",    "code": 503 }
-{ "error": "amount_too_low",      "message": "Minimum send amount is 1 USDC",           "code": 400 }
-{ "error": "invalid_bank_code",   "message": "Bank code 999 not found",                 "code": 400 }
+#### On-chain deposit
+
+The user approves the exact `amount_base` for the escrow, then calls:
+
+```javascript
+await escrow.deposit(token_address, amount_base, ref);   // ref comes from the quote
 ```
 
-**cURL Example**
-```bash
-curl -X POST https://kudiarc.xyz/api/send/payout \
-  -H "Content-Type: application/json" \
-  -d '{
-    "wallet": "0x7B77...",
-    "amount_usdc": 10,
-    "token": "USDC",
-    "country_code": "NG",
-    "currency": "NGN",
-    "recipient_name": "John Doe",
-    "account_number": "0123456789",
-    "bank_name": "GTBank",
-    "bank_code": "058",
-    "signature": "0x...",
-    "approve_tx": "0x...",
-    "method": "bank"
-  }'
-```
+#### `POST /api/send/confirm`
+
+Request: `{ "quote_id": "9f2c…", "tx_hash": "0x…" }`. The server checks the transaction on-chain (success, sent to the escrow, matching quote reference, wallet, token and exact amount, still active, and made inside the quote window) and then starts the payout. Safe to call again with the same hash.
+
+| Status | Meaning |
+|--------|---------|
+| `200` | Order view (see below) |
+| `202` | Transaction not visible yet, retry in a couple of seconds |
+| `400 invalid_deposit` | The transaction does not match the quote |
+| `409` | Order already processed with a different transaction |
+
+#### `GET /api/send/order/{quote_id}`
+
+Returns the order view: `quote_id, status, token, amount, fee, rate, payout_amount, currency, country_code, recipient_name, recipient_account_last4, tx_hash, explorer_url, expires_at, created_at`.
+
+| Order status | Meaning |
+|--------------|---------|
+| `quoted` | Waiting for the deposit |
+| `payout_pending` | Payout accepted by the partner, awaiting its final result |
+| `completed` | Payout confirmed; ready for the owner to settle |
+| `refund_required` | Payout failed or deposit arrived late; the owner refunds it |
+| `payout_unknown` | Partner outcome unclear; held for manual review |
+| `refunded` | Deposit returned to the sender |
+
+#### Partner webhooks
+
+`POST /api/send/flw-webhook` (header `verif-hash`), `POST /api/send/paystack-webhook` (`x-paystack-signature`, HMAC-SHA512) and `POST /api/send/webhook` (Bitnob, `x-bitnob-signature`). Webhooks are rejected with `503` if their secret is not configured and `401` if the signature is wrong. A webhook only triggers a check: the server asks the partner what happened and acts only on a final answer. Pending statuses are ignored.
+
+#### `POST /api/send/payout` — retired
+
+Returns `410 Gone`. Use the flow above.
 
 ---
 
@@ -284,39 +312,18 @@ curl -X POST https://kudiarc.xyz/api/send/payout \
 
 #### `POST /api/swap/record`
 
-Records a completed on-chain swap event to the Kudi Arc database. Called automatically by the frontend after a successful swap transaction.
-
-**Request Body**
+Records a swap after the frontend sees it succeed. The server reads the swap from the chain (wallet, tokens, amounts and fee come from the contract's `Swapped` event), so only the wallet and transaction hash are needed. Anything else in the body is ignored.
 
 ```json
-{
-  "wallet": "0x7B77...",
-  "tx_hash": "0xecc2...",
-  "from_token": "USDC",
-  "to_token": "EURC",
-  "amount_in": 10.0,
-  "amount_out": 8.638,
-  "rate": 0.8638
-}
+{ "wallet": "0x…", "tx_hash": "0x…" }
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `wallet` | string | ✅ | Wallet that executed the swap |
-| `tx_hash` | string | ✅ | On-chain transaction hash |
-| `from_token` | string | ✅ | Input token: `"USDC"` or `"EURC"` |
-| `to_token` | string | ✅ | Output token: `"USDC"` or `"EURC"` |
-| `amount_in` | float | ✅ | Amount of input token |
-| `amount_out` | float | ✅ | Amount of output token received |
-| `rate` | float | ✅ | Rate used for this swap |
-
-**Response `200 OK`**
-```json
-{
-  "status": "recorded",
-  "id": 42
-}
-```
+| Status | Meaning |
+|--------|---------|
+| `200` `{"status":"saved"}` | Recorded (or already recorded) |
+| `202` `{"status":"pending"}` | Transaction not visible yet |
+| `400` | Not a successful swap on the KudiSwap contract, or made by a different wallet |
+| `503` | Chain lookup failed or swaps are not configured |
 
 ---
 
@@ -343,7 +350,7 @@ Returns the full transaction history for a wallet address — including swaps an
 **Response `200 OK`**
 ```json
 {
-  "wallet": "0x7B77...",
+  "wallet": "0x1234...",
   "count": 5,
   "transactions": [
     {
@@ -355,7 +362,7 @@ Returns the full transaction history for a wallet address — including swaps an
       "amount_out": 1.14,
       "rate": 0.8638,
       "tx_hash": "0xecc2...",
-      "explorer_url": "https://testnet.arcscan.app/tx/0xecc2...",
+      "explorer_url": "https://explorer.testnet.arc.io/tx/0xecc2...",
       "created_at": "2026-03-27T11:19:28Z"
     },
     {
@@ -381,7 +388,7 @@ Returns the full transaction history for a wallet address — including swaps an
 
 **cURL Example**
 ```bash
-curl "http://129.80.199.123/api/history/0x7B77...?type=swap&limit=10"
+curl "https://kudiarc.xyz/api/history/0x1234...?type=swap&limit=10"
 ```
 
 ---
@@ -413,7 +420,7 @@ Returns USYC yield statistics from Circle's Arc deployment.
 | `price_per_usyc` | float | Current USYC price in USDC terms |
 | `backing` | string | What the fund is backed by |
 
-> ⚠️ USYC deposits are pending Circle allowlist approval. APY is live data; deposits are not yet active.
+> ℹ️ KudiYield deposits are active on testnet. APY is a live reading; actual returns follow the USYC price, which changes over time.
 
 ---
 
@@ -424,7 +431,7 @@ Returns a user's USYC position and accrued earnings.
 **Response `200 OK`**
 ```json
 {
-  "wallet": "0x7B77...",
+  "wallet": "0x1234...",
   "usyc_balance": 9.79,
   "usdc_value": 10.0,
   "earnings_usdc": 0.21,
@@ -447,45 +454,52 @@ Returns a user's USYC position and accrued earnings.
 
 #### `GET /api/health`
 
-Returns service health status for all components. Useful for monitoring and uptime checks.
+Returns service health. Useful for monitoring. The endpoint always answers `200`; read the `status` field.
 
-**Response `200 OK` — All systems operational**
+**Response `200 OK`**
 ```json
 {
   "status": "ok",
-  "timestamp": 1774663084,
+  "chain": "Arc Testnet",
+  "chain_id": 5042002,
   "components": {
     "api": "ok",
-    "database": "ok",
     "fx_oracle": "ok",
-    "bitnob": "ok",
-    "flutterwave": "ok",
-    "wave": "ok",
-    "arc_rpc": "ok"
+    "arc_rpc": "ok",
+    "bitnob": "mock"
   },
-  "version": "1.0.0"
+  "version": "2.0.0"
 }
 ```
 
-**Response `503 Service Unavailable` — Degraded**
-```json
-{
-  "status": "degraded",
-  "timestamp": 1774663084,
-  "components": {
-    "api": "ok",
-    "database": "ok",
-    "fx_oracle": "ok",
-    "bitnob": "unavailable",
-    "flutterwave": "ok",
-    "wave": "ok",
-    "arc_rpc": "ok"
-  },
-  "version": "1.0.0"
-}
-```
+| Component | Values |
+|-----------|--------|
+| `api` | `ok` |
+| `fx_oracle` | `ok`, or `stale` before the first rate fetch |
+| `arc_rpc` | `ok`, or `unavailable` when the chain RPC cannot be reached |
+| `bitnob` | `mock` in sandbox mode, `ok` when a live key is configured |
 
-When a component shows `"unavailable"`, the corresponding country routes are automatically disabled in `/api/countries` (`"available": false`).
+`status` is `ok` when every component is `ok` or `mock`, otherwise `degraded`. Country routes are not disabled automatically.
+
+---
+
+## Admin (owner-signed)
+
+All admin endpoints need the signed headers described under [Authentication](#authentication).
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/admin/challenge` | Get a single-use nonce |
+| `GET /api/admin/send/orders?status=&chain_state=&limit=` | List send orders with a suggested action (`settle`, `refund`, `resolve`, `wait`) |
+| `POST /api/admin/send/resolve` | Record the real result of an unclear payout: `{ "quote_id", "outcome": "paid" \| "failed" }` |
+| `POST /api/admin/send/chain-sync` | Read settle/refund results from the escrow into the database |
+| `POST /api/admin/send/reconcile` | Find deposits that exist on-chain but were never confirmed and process them |
+| `POST /api/admin/maintenance` | Toggle maintenance mode |
+| `POST /api/admin/send-settings` | Set the revenue fee floor and minimum send |
+| `POST /api/admin/refresh-rates` | Force an FX rate refresh |
+| `POST /api/admin/recent-txs` | Recent transactions |
+
+Settling and refunding are done by the owner wallet directly on the escrow contract (the dashboard's Send Orders page does this); the server never holds a key.
 
 ---
 
@@ -522,6 +536,19 @@ await tx.wait();
 | Rate timelock | `300` seconds | 5-minute delay on rate updates |
 | Withdrawal timelock | `86400` seconds | 24-hour delay on liquidity withdrawal |
 
+### KudiSendEscrow (`0xd2e4eBA288FDcAef6Cec0095C763483DEfA2e010`)
+
+| Function | Who | Purpose |
+|----------|-----|---------|
+| `deposit(token, amount, ref)` | Anyone | Deposit against a backend-issued `ref`. One deposit per `ref` |
+| `claimRefund(ref)` | The depositor | Reclaim an untouched deposit after `REFUND_DELAY` (72 hours). Works while paused |
+| `settle(refs[])` | Owner | Send paid-out deposits to the treasury (max 100 per call) |
+| `refund(ref)` | Owner | Return a deposit to the depositor |
+| `setPaused`, `setLimits`, `setTreasury`, `setTokenAllowed` | Owner | Configuration. Pausing stops new deposits only |
+| `transferOwnership` / `acceptOwnership` | Owner / new owner | Two-step ownership |
+
+Events: `Deposited(ref, user, token, amount)`, `Settled(...)`, `Refunded(..., byUser)`.
+
 ---
 
 ## Changelog
@@ -529,6 +556,7 @@ await tx.wait();
 | Version | Date | Changes |
 |---------|------|---------|
 | v1.0 | March 2026 | Initial testnet release — rates, countries, banks, send, history, yield, health |
+| v2.0 | October 2026 | Escrow-backed send (challenge, quote, confirm), owner-signed admin API, verified swap recording, authenticated webhooks. `POST /api/send/payout` retired |
 
 ---
 

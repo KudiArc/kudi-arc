@@ -16,3 +16,7 @@ deployment.json
 exact-input.json
 standard-input.json
 deploy.js
+
+# Foundry deps (install with: forge install foundry-rs/forge-std)
+lib/
+broadcast/

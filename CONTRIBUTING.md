@@ -49,7 +49,7 @@ python3 db.py
 
 # 6. Run the backend
 python3 app.py
-# API available at http://localhost:5000
+# API available at http://localhost:5001
 
 # 7. Open the frontend
 # Open index.html, send.html, or yield.html in your browser
@@ -113,7 +113,7 @@ We use [Conventional Commits](https://www.conventionalcommits.org/):
 feat: add Uganda UGX corridor via Flutterwave
 fix: correct NGN rate display on send.html
 docs: add cURL examples to API.md
-security: add signature replay protection to /api/send/payout
+security: add signature replay protection to /api/send/quote
 ```
 
 ---
@@ -157,11 +157,14 @@ Adding new African countries requires: FX rate config, partner API integration, 
 **Reference:** See how Nigeria is implemented in `app.py` and replicate for Ethiopia, Egypt, or Mozambique.
 
 ### 🧪 Test Coverage
-The backend currently has no automated test suite. Writing `pytest` tests for the Flask API endpoints would be a high-value contribution.
+The backend has a pytest suite in `tests/` and the contracts have Foundry tests in `test/`. Extending them (and adding CI) is a high-value contribution.
 
 ```bash
-pip install pytest pytest-flask
-# Tests should go in: tests/test_api.py, tests/test_db.py
+pip install -r requirements-dev.txt
+python3 -m pytest
+
+forge install foundry-rs/forge-std
+forge test
 ```
 
 ### 📱 Mobile UX Improvements
