@@ -314,6 +314,12 @@ sudo ufw status
 
 ## 8. Smoke Tests
 
+After every deploy or nginx change, confirm nothing sensitive is public (exits non-zero on a leak):
+
+```bash
+scripts/check_exposure.sh https://kudiarc.xyz https://admin.kudiarc.xyz
+```
+
 Run these after deployment to verify everything is working:
 
 ```bash
