@@ -8,7 +8,7 @@ If you discover a security vulnerability in Kudi Arc — smart contracts, backen
 
 | Channel | Contact |
 |---------|---------|
-| **Email** | security@kudiarc.xyz |
+| **GitHub (preferred)** | [Report privately](https://github.com/KudiArc/kudi-arc/security/advisories/new) |
 | **Twitter DM** | [@KudiArc](https://twitter.com/KudiArc) (for initial contact only) |
 | **Discord** | Private message to `@kudicarc` on [discord.gg/kudiarc](https://discord.gg/kudiarc) |
 

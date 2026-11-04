@@ -392,7 +392,7 @@ git push origin feature/your-feature
 
 Found a vulnerability? **Do not open a public issue.**
 
-Contact us at **security@kudiarc.xyz** or DM [@KudiArc](https://twitter.com/KudiArc) on X.
+Report it privately via [GitHub security advisories](https://github.com/KudiArc/kudi-arc/security/advisories/new) or DM [@KudiArc](https://twitter.com/KudiArc) on X.
 
 We respond within 48 hours. See [SECURITY.md](./SECURITY.md) for the full disclosure policy.
 

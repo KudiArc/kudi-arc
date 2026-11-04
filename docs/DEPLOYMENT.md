@@ -250,7 +250,9 @@ server {
     server_name _;  # Replace with your domain on mainnet
 
     # Static frontend files
-    root /home/ubuntu/kudi-arc;
+    # ONLY the public/ folder is a web root. Never point root at the project
+    # folder: it holds .env, kudi.db, .git and the backend source.
+    root /home/ubuntu/kudi-arc/public;
     index index.html;
 
     location / {
@@ -265,6 +267,10 @@ server {
         proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_read_timeout 120s;
     }
+
+    # Defence in depth: never serve dotfiles or data/source files
+    location ~ /\\. { deny all; return 404; }
+    location ~* \\.(env|db|sqlite|json|py|sh|log|md|toml|ini)\$ { deny all; return 404; }
 
     # Security headers
     add_header X-Frame-Options "SAMEORIGIN";

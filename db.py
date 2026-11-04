@@ -1,7 +1,8 @@
 import sqlite3, os, re, time, json
 from datetime import datetime
 
-DB_PATH = os.getenv("DB_PATH", os.path.join(os.path.dirname(os.path.abspath(__file__)), "kudi.db"))
+DB_PATH = os.getenv("DB_PATH", os.path.join(os.path.expanduser("~"), ".kudi-data", "kudi.db"))
+os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
