@@ -154,6 +154,10 @@ The backend currently uses SQLite for transaction records. This is a known testn
 
 ---
 
+## Acknowledgements
+
+Thanks to [kta1kri](https://github.com/kta1kri) for responsible disclosure of a web server exposure (Nov 2026).
+
 ## Audit Reports
 
 | Version | Tool | Date | Status |

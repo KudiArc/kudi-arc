@@ -9,6 +9,7 @@
 - New `scripts/check_exposure.sh`: run it after every deploy; it fails if any sensitive path is publicly readable.
 - Tests fail if `public/` ever contains source, data or secret files.
 - Security reports now go through GitHub private vulnerability reporting (see `SECURITY.md`).
+- Thanks to kta1kri for responsible disclosure of a web server exposure.
 
 ## v2.0 — October 2026
 
