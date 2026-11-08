@@ -250,8 +250,7 @@ server {
     server_name _;  # Replace with your domain on mainnet
 
     # Static frontend files
-    # ONLY the public/ folder is a web root. Never point root at the project
-    # folder: it holds .env, kudi.db, .git and the backend source.
+    # Web root contains front-end files only
     root /home/ubuntu/kudi-arc/public;
     index index.html;
 
@@ -268,9 +267,9 @@ server {
         proxy_read_timeout 120s;
     }
 
-    # Defence in depth: never serve dotfiles or data/source files
-    location ~ /\\. { deny all; return 404; }
-    location ~* \\.(env|db|sqlite|json|py|sh|log|md|toml|ini)\$ { deny all; return 404; }
+    # Dotfiles and data/source files are never served
+    location ~ /\. { return 404; }
+    location ~* \.(env|db|sqlite|json|py|sh|log|md|toml|ini)$ { return 404; }
 
     # Security headers
     add_header X-Frame-Options "SAMEORIGIN";
@@ -314,7 +313,7 @@ sudo ufw status
 
 ## 8. Smoke Tests
 
-After every deploy or nginx change, confirm nothing sensitive is public (exits non-zero on a leak):
+Check that no sensitive path is publicly readable (non-zero exit if one is):
 
 ```bash
 scripts/check_exposure.sh https://kudiarc.xyz https://admin.kudiarc.xyz

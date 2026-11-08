@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Fails (exit 1) if any sensitive file is publicly readable.
+# Checks that sensitive paths are not publicly readable.
 # Usage: scripts/check_exposure.sh [BASE_URL ...]
-# A 200 that returns an HTML page is fine (SPA fallback); a 200 with anything else is a leak.
+# Exit status is non-zero if any path returns non-HTML content.
 set -u
 BASES=("$@")
 [ ${#BASES[@]} -eq 0 ] && BASES=(https://kudiarc.xyz https://admin.kudiarc.xyz)
@@ -31,5 +31,5 @@ for base in "${BASES[@]}"; do
   done
 done
 rm -f /tmp/expo.$$
-[ $fail -eq 0 ] && echo "PASS: nothing sensitive is served" || echo "FAIL: fix before going live"
+[ $fail -eq 0 ] && echo "PASS: nothing sensitive is served" || echo "FAIL: sensitive content is publicly readable"
 exit $fail
